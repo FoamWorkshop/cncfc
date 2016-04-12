@@ -7,6 +7,12 @@ The cutting path is split into:
 2. ct_path - closed loop, begin and end in master knot position
 the output of the program is a set of files with an ordered list of knots'''
 
+
+#TODO:
+#add option for direction
+#add options for arc segmentation control
+#add reversed io path sequence
+
 import os
 import getopt
 import sys
@@ -224,7 +230,7 @@ def save_knots(file_name,knots):
 #****************************************************************************
 #*****************************program**************************************** 
 #****************************************************************************
-dir_path=os.getcwd()
+dir_path =os.getcwd()
 dxf_files=os.listdir(dir_path)
 
 arg_len=len(sys.argv)
@@ -286,9 +292,13 @@ else:
             #    print 'ct path: DONE'
             #   paths_summary(io_path,ct_path)
 
-                io_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'io','knt',layer_name)
-                knots2file(io_file_name, io_path, sorted_knots)
-                print('IO_path saved to: {0}'.format(io_file_name))
+                i_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'i','knt',layer_name)
+                knots2file(i_file_name, io_path, sorted_knots)
+                print('i_path saved to: {0}'.format(i_file_name))
+
+                o_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'o','knt',layer_name)
+                knots2file(o_file_name, [ var[::-1] for var in io_path[::-1]] , sorted_knots)
+                print('o_path saved to: {0}'.format(o_file_name))
 
                 ct_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'ct','knt',layer_name)
                 knots2file(ct_file_name, ct_path, sorted_knots)
