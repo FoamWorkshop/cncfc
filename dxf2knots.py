@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 '''dxf2path.py, 6.04.2016 author: Adam Narozniak
 dxf2path ptogram is a part of the CNCFCgcode generator. It automaticaly extracts cutting path from a dxf file. 
 The cutting path is split into:
@@ -6,6 +8,8 @@ The cutting path is split into:
 the output of the program is a set of files with an ordered list of knots'''
 
 import os
+import getopt
+import sys
 import dxfgrabber
 import numpy as np
 
@@ -16,9 +20,7 @@ def sub_points(p1,p2):
     vect=[]
     p1=[x for x in p1[0]]
     p2=[x for x in p2[0]]
- #   print p3, p4
-    print len(p1)
-    print len(p2)
+    
     if len(p1)==len(p2):
         for i, n in enumerate(p2):
             vect.append(n-p1[i])
@@ -131,9 +133,9 @@ def find_path(crit,el_kt_list, sorted_knots, excl_knot):
                 el_kt_list.remove(element)
                 break
             if counter>sect_length:
-                print'#',
+                print'+',
                 counter=0
-    print '#|DONE\n'           
+    print '+|DONE\n'           
     if crit==1:
         path.append([path[-1][1],path[0][0]])
     return path
@@ -219,10 +221,18 @@ def save_knots(file_name,knots):
     f.close()
 
 
-
 #****************************************************************************
 #*****************************program**************************************** 
 #****************************************************************************
+ifile=''
+ofile=''
+####################################
+# o == option
+# a == argument passed to the o
+####################################
+
+
+print 'go through all\n'
 
 #find dxf files in the current directory
 dir_path=os.getcwd()
@@ -242,30 +252,31 @@ else:
     print_list(files_dxf,'found: ')
     print '\n'
     for i, files_dxf_member in enumerate(files_dxf):
-        
+
         case_name=os.path.splitext(files_dxf_member)
 
-        print('{0}\nfile {1}: {2}'.format('*'*24,i, files_dxf_member))
-    
-        
+      
         dxf = dxfgrabber.readfile(files_dxf_member,{"assure_3d_coords": True})
         dxf_layers = dxf.layers
-        
-        for dxf_layers_member in dxf_layers:            
-            print('LAYER: {1}\n{0}'.format('-'*24,dxf_layers_member.name))
 
+        for dxf_layers_member in dxf_layers:            
+            layer_name = dxf_layers_member.name
+            print('\n{0}'.format('#'*60))
+            print('file {0}: {1}'.format(i, files_dxf_member))
+            print('LAYER: {0}'.format(layer_name))
+            print('{0}\n'.format('#'*60))                                 
             knots_list, elements_list = dxf_read(dxf, dxf_layers_member.name)
             sorted_knots=knots_dict(knots_list)
             el_kt_list  =elements_coords2knots(elements_list,sorted_knots)
             knots_rank  =knots_rank_list(el_kt_list, sorted_knots,None)
             master_knot =knots_rank_find(knots_rank,3)  
             IO_knot     =knots_rank_find(knots_rank,1)  
-            
+
             knots_rank_list_summary(knots_rank)
-            
+
             if len(IO_knot)!=1 or len(master_knot)!=1 or IO_knot[0]==None or master_knot[0]==None:
                 print('{0}{1}'.format('-'*24,'SKIPPED'))
-                
+
             else:
                 print '\nIO path:'
                 io_path=find_path(2, el_kt_list, sorted_knots, None) #IO path
@@ -276,11 +287,10 @@ else:
             #    print 'ct path: DONE'
             #   paths_summary(io_path,ct_path)
 
-                io_file_name='{1}_{0}.{2}'.format(case_name[0],'io','knt')
+                io_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'io','knt',layer_name)
                 knots2file(io_file_name, io_path, sorted_knots)
                 print('IO_path saved to: {0}'.format(io_file_name))
-              
-                ct_file_name='{1}_{0}.{2}'.format(case_name[0],'ct','knt')
+
+                ct_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'ct','knt',layer_name)
                 knots2file(ct_file_name, ct_path, sorted_knots)
                 print('ct_path saved to: {0}'.format(ct_file_name))
-               
