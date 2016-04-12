@@ -224,33 +224,32 @@ def save_knots(file_name,knots):
 #****************************************************************************
 #*****************************program**************************************** 
 #****************************************************************************
-ifile=''
-ofile=''
-####################################
-# o == option
-# a == argument passed to the o
-####################################
-
-
-print 'go through all\n'
-
-#find dxf files in the current directory
 dir_path=os.getcwd()
 dxf_files=os.listdir(dir_path)
-files_dxf=[i for i in dxf_files if i.endswith('.dxf')]
 
-#if list is empty display msg and exit 
+arg_len=len(sys.argv)
+if arg_len == 1:
+    print 'go through all dxfs in the folder\n'
+    #find dxf files in the current directory
+    files_dxf=[i for i in dxf_files if i.endswith('.dxf')]
+
+else:
+    cmdargs = sys.argv
+    print cmdargs[1:]
+    files_dxf=[i for i in dxf_files if i in cmdargs[1:]]
+
+    #if list is empty display msg and exit 
 if not files_dxf:
 
-    print 'dir does not include any dxf files' 
+    print 'dir does not include dxf files' 
 
 #else, execute the program
 
 else:
     #list found files:
-    print '\n'
+   # print '\n'
     print_list(files_dxf,'found: ')
-    print '\n'
+  #  print '\n'
     for i, files_dxf_member in enumerate(files_dxf):
 
         case_name=os.path.splitext(files_dxf_member)
