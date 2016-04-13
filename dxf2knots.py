@@ -1,17 +1,49 @@
 #!/usr/bin/python
 
-'''dxf2path.py, 6.04.2016 author: Adam Narozniak
-dxf2path ptogram is a part of the CNCFCgcode generator. It automaticaly extracts cutting path from a dxf file. 
-The cutting path is split into:
-1. IO_path - in/out path begining with single knot
-2. ct_path - closed loop, begin and end in master knot position
-the output of the program is a set of files with an ordered list of knots'''
+'''
+program options:
+-i [input files | all]
+-a [float decimal accuracy] default 3
+-narc [number o segments] - default 10 
+-larc [minimal segment length] - default 1
+-cw   [1|0] default 1: 1 - clockwise; 0 - counter clockwise of the  closed path
 
+info:
+    the program extracts entities:
+        LINE, ARC
+    and converts them into a list of coordinates defining:
+        1 - input/output path
+        2 - closed contour paths
 
-#TODO:
-#add option for direction
-#add options for arc segmentation control
-#add reversed io path sequence
+path finding alghoritm:
+        1 - find a segment including the start knot (k0)
+        2 - read the remining knot (r_k)
+        3 - push (remove from the pool) the segment knots to the path list ordered like: [k0, r_k]
+        4 - assign the new start knot as (k0) and repeat from 1 while the pool is not empty.
+        5 - if the closed contour path, add the last segment connecting the first knot and the last in the path list [k(-1), k(0)]
+
+program algorithm:
+        1 - open dxf and go through all layers
+        2 - find the entities and read DATA with specified accuracy:
+             LINE - read START, END coordinates
+             ARC - read START ANGLE, END ANGLE and RADIUS:
+             convert the curve to segments with following options:
+              n - number of segments
+              or l_min - specified minimal segment length
+
+            note: the concept is taken from Abaqus inp. files organisation
+            the  output is:
+             - list of segment coordinates [[x1,y1,y1], [x2,y2,y2];...]
+             - list of segment knots [[x1,y1,y1]; [x2,y2,y2]; [xn, yn, zn];...]
+
+        3 - remove duplicates from the segment knots list. position of a coordinate int the knot list indicates the knot number.
+        4 - replace the segment list coordinates by knot numbers. the resultant list includes segment knot numbers [[k1, k2];[ki kn];...]
+        5 - sort the segment list by knots count. the proper list should include 1 - io knot shared with a segment and: 1 - master knot shared between 3 segments
+        6 - find the io_path with begin in io knot and end in master knot. the outcome is:
+                io_path and remining segment pool for the closed path
+        7 - find the END segment for clock wise or counter clock wise direction and exclude the last knot from the ranking list.
+        8 - find the ct_path
+        9 - save ct_path, io_path and reversed(io_path) to the output files'''
 
 import os
 import getopt
@@ -227,13 +259,17 @@ def save_knots(file_name,knots):
     f.close()
 
 
-#****************************************************************************
-#*****************************program**************************************** 
-#****************************************************************************
+#*********************************************************************DEFAULT PARAMETERS
+dec_acc = 3  #decimal accuracy
+n_arc = 10   #number of segments
+l_arc = 1    #minimal segment length
+path_dir = 1 #closed path collecting direction
+#*********************************************************************PROGRAM 
+
 dir_path =os.getcwd()
 dxf_files=os.listdir(dir_path)
-
 arg_len=len(sys.argv)
+
 if arg_len == 1:
     print 'go through all dxfs in the folder\n'
     #find dxf files in the current directory
@@ -244,9 +280,16 @@ else:
     print cmdargs[1:]
     files_dxf=[i for i in dxf_files if i in cmdargs[1:]]
 
-    #if list is empty display msg and exit 
 if not files_dxf:
+    print('program options:')
+    print('-{0:8s} [input file names | all]'.format('i'))
+    print('-{0:8s} [float decimal accuracy] - default 3'.format('facc'))
+    print('-{0:8s} [number of arc segments] - default 10'.format('narc')) 
+    print('-{0:8s} [minimal arc segment length] - default 1'.format('larc'))
+    print('-{0:8s} [1|0] - default 1: 1 - clockwise; 0 - counter clockwise of the  closed path'.format('pthdir'))
 
+
+    
     print 'dir does not include dxf files' 
 
 #else, execute the program
@@ -255,7 +298,7 @@ else:
     #list found files:
    # print '\n'
     print_list(files_dxf,'found: ')
-  #  print '\n'
+    #print '\n'
     for i, files_dxf_member in enumerate(files_dxf):
 
         case_name=os.path.splitext(files_dxf_member)
@@ -285,13 +328,12 @@ else:
             else:
                 print '\nIO path:'
                 io_path=find_path(2, el_kt_list, sorted_knots, None) #IO path
-            #    print 'IO path: DONE'
+            
                 last_el, excl_knot = find_l_el(1, el_kt_list, sorted_knots, master_knot[0])
                 print '\nct path:'
                 ct_path=find_path(1, el_kt_list, sorted_knots, excl_knot[0]) #loop path
-            #    print 'ct path: DONE'
-            #   paths_summary(io_path,ct_path)
-
+            
+                #{{{
                 i_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'i','knt',layer_name)
                 knots2file(i_file_name, io_path, sorted_knots)
                 print('i_path saved to: {0}'.format(i_file_name))
@@ -303,3 +345,4 @@ else:
                 ct_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'ct','knt',layer_name)
                 knots2file(ct_file_name, ct_path, sorted_knots)
                 print('ct_path saved to: {0}'.format(ct_file_name))
+                #}}}
