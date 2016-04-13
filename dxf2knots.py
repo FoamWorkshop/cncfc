@@ -1,4 +1,5 @@
 #!/usr/bin/python
+__author__ = 'FoamWorkshop'
 
 '''
 program options:
@@ -46,7 +47,7 @@ program algorithm:
         9 - save ct_path, io_path and reversed(io_path) to the output files'''
 
 import os
-import getopt
+import argparse
 import sys
 import dxfgrabber
 import numpy as np
@@ -152,9 +153,9 @@ def find_path(crit,el_kt_list, sorted_knots, excl_knot):
     counter=0
     knots_rank=knots_rank_list(el_kt_list, sorted_knots, excl_knot)
     val_max   =max(knots_rank, key=lambda tup: tup[1])[1]
-    print('number of elements: {0}'.format(buff_length))
-    print('0|{0}|100%'.format('-'*bar_length))
-    print ' |',
+#    print('number of elements: {0}'.format(buff_length))
+#    print('0|{0}|100%'.format('-'*bar_length))
+#    print ' |',
     while val_max>crit:
         knots_rank=knots_rank_list(el_kt_list, sorted_knots, excl_knot)
         curr_knot =knots_rank_find(knots_rank,1)
@@ -171,9 +172,9 @@ def find_path(crit,el_kt_list, sorted_knots, excl_knot):
                 el_kt_list.remove(element)
                 break
             if counter>sect_length:
-                print'+',
+ #               print'+',
                 counter=0
-    print '+|DONE\n'           
+ #   print '+|DONE\n'           
     if crit==1:
         path.append([path[-1][1],path[0][0]])
     return path
@@ -205,16 +206,18 @@ def print_list(data_list, common_text):
     for var in data_list:
         print('{0} {1}'.format(common_text, var))
   
-def dxf_read(files,layer_name):
-    tol=3
+def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
+    tol=dec_acc
     knots_list=[]
     elements_list=[]
-
-    list_entities(dxf)
+    line_count = 0
+    arc_count = 0
+#    list_entities(dxf)
 
     for shape in dxf.entities:
         if shape.layer==layer_name:
             if shape.dxftype=='LINE':
+                line_count+=1
                 p1=tuple(round(x,tol) for x in shape.start)
                 p2=tuple(round(x,tol) for x in shape.end)
                 knots_list.append(p1)
@@ -222,9 +225,10 @@ def dxf_read(files,layer_name):
                 elements_list.append([p1,p2])
 
             if shape.dxftype=='ARC':
+                arc_count+=1
                 ARC_knots_list=[]
-                n=20 #number of segments
-                min_len=0.5
+                n=n_arc#number of segments
+                min_len=l_arc
                 O=shape.center
                 R=shape.radius
                 angl_1=shape.startangle*np.pi/180
@@ -248,7 +252,7 @@ def dxf_read(files,layer_name):
 
                 knots_list.extend(ARC_knots_list)
 
-    return (knots_list, elements_list)
+    return (knots_list, elements_list, [line_count, arc_count])
 
 def save_knots(file_name,knots):
     f=open(file_name,'w')
@@ -260,89 +264,98 @@ def save_knots(file_name,knots):
 
 
 #*********************************************************************DEFAULT PARAMETERS
-dec_acc = 3  #decimal accuracy
-n_arc = 10   #number of segments
-l_arc = 1    #minimal segment length
-path_dir = 1 #closed path collecting direction
+dflt_dxf_list = 'all'  #decimal accuracy
+dflt_dec_acc = 3  #decimal accuracy
+dflt_n_arc = 10   #number of segments
+dflt_l_arc = 1    #minimal segment length
+dflt_path_dir = 1 #closed path collecting direction
 #*********************************************************************PROGRAM 
+    
+parser = argparse.ArgumentParser(description='test')
+parser.add_argument('-i','--input',nargs='*',default=dflt_dxf_list,help='input filenames')
+parser.add_argument('-a','--accuracy',type=int,default=dflt_dec_acc,help='decimal accuracy, default: 3')
+parser.add_argument('-narc','--arc_seg_num',type=int,default=dflt_n_arc,help='arc segments number, default: 10')
+parser.add_argument('-larc','--arc_seg_len',type=int,default=dflt_l_arc,help='minimal arc segment length, default: 1')
+parser.add_argument('-cw','--collection_dir',type=int,default=dflt_path_dir,help='closed path collection dir')
+
+args = parser.parse_args()
+
+dxf_list = args.input
+dec_acc = args.accuracy
+n_arc = args.arc_seg_num
+l_arc = args.arc_seg_len
+path_dir = args.collection_dir
 
 dir_path =os.getcwd()
-dxf_files=os.listdir(dir_path)
-arg_len=len(sys.argv)
+dxf_files=[i for i in os.listdir(dir_path) if i.endswith('.dxf')]
 
-if arg_len == 1:
-    print 'go through all dxfs in the folder\n'
-    #find dxf files in the current directory
-    files_dxf=[i for i in dxf_files if i.endswith('.dxf')]
-
-else:
-    cmdargs = sys.argv
-    print cmdargs[1:]
-    files_dxf=[i for i in dxf_files if i in cmdargs[1:]]
+if dxf_list != 'all':
+    print dxf_files
+    files_dxf=[i for i in dxf_files if i in dxf_list]
 
 if not files_dxf:
-    print('program options:')
-    print('-{0:8s} [input file names | all]'.format('i'))
-    print('-{0:8s} [float decimal accuracy] - default 3'.format('facc'))
-    print('-{0:8s} [number of arc segments] - default 10'.format('narc')) 
-    print('-{0:8s} [minimal arc segment length] - default 1'.format('larc'))
-    print('-{0:8s} [1|0] - default 1: 1 - clockwise; 0 - counter clockwise of the  closed path'.format('pthdir'))
-
-
-    
     print 'dir does not include dxf files' 
 
 #else, execute the program
-
 else:
-    #list found files:
-   # print '\n'
-    print_list(files_dxf,'found: ')
-    #print '\n'
+    
+    print('SETTINGS:')
+    print('{0}{1:<30}: {2}'.format(' '*10,'decimal accuracy',dec_acc))
+    print('{0}{1:<30}: {2}'.format(' '*10,'arc segments count',n_arc)) 
+    print('{0}{1:<30}: {2}'.format(' '*10,'minimal arc segment length',l_arc))
+    print('{0}{1:<30}: {2}'.format(' '*10,'closed path collection dir',path_dir))
+    print('{0}{1:<30}: {2}'.format(' '*10,'files',files_dxf))
+#{{{print table header    
+    print('\n\n{0:12}|{1:8}|{2:8}|{3:8}|{4:8}|{5:8}|{6:8}|{7:^20}'.format('file','layer','lines','arcs','1 -knt','2 -knt','3 -knt','status'))
+    print('{0}'.format('-'*80))
+#}}}print table header
     for i, files_dxf_member in enumerate(files_dxf):
 
         case_name=os.path.splitext(files_dxf_member)
-
-      
         dxf = dxfgrabber.readfile(files_dxf_member,{"assure_3d_coords": True})
         dxf_layers = dxf.layers
 
         for dxf_layers_member in dxf_layers:            
             layer_name = dxf_layers_member.name
-            print('\n{0}'.format('#'*60))
-            print('file {0}: {1}'.format(i, files_dxf_member))
-            print('LAYER: {0}'.format(layer_name))
-            print('{0}\n'.format('#'*60))                                 
-            knots_list, elements_list = dxf_read(dxf, dxf_layers_member.name)
+            knots_list, elements_list, shape_count = dxf_read(dxf, dxf_layers_member.name,dec_acc,n_arc, l_arc)
             sorted_knots=knots_dict(knots_list)
             el_kt_list  =elements_coords2knots(elements_list,sorted_knots)
+         #   print_list(el_kt_list, ' el kt list ')
+         #   print_list(sorted_knots,' sorted knots')
             knots_rank  =knots_rank_list(el_kt_list, sorted_knots,None)
             master_knot =knots_rank_find(knots_rank,3)  
             IO_knot     =knots_rank_find(knots_rank,1)  
-
-            knots_rank_list_summary(knots_rank)
-
+            
+            print('{0:12}|{1:8}|{2:8}|{3:8}|{4:8}|{5:8}|{6:8}|'.format(files_dxf_member,layer_name,\
+                                                                       shape_count[0],shape_count[1],\
+                                        [x[1] for x in knots_rank].count(1),\
+                                        [x[1] for x in knots_rank].count(2),\
+                                        [x[1] for x in knots_rank].count(3),' ')),
+                                        
+ 
             if len(IO_knot)!=1 or len(master_knot)!=1 or IO_knot[0]==None or master_knot[0]==None:
-                print('{0}{1}'.format('-'*24,'SKIPPED'))
+                print('{0:^20}|'.format('SKIPPED'))
 
             else:
-                print '\nIO path:'
+                
                 io_path=find_path(2, el_kt_list, sorted_knots, None) #IO path
-            
-                last_el, excl_knot = find_l_el(1, el_kt_list, sorted_knots, master_knot[0])
-                print '\nct path:'
+                print('{0:3}: {1:4d}|'.format('i/o',len(io_path))),
+
+                last_el, excl_knot = find_l_el(path_dir, el_kt_list, sorted_knots, master_knot[0])
+
                 ct_path=find_path(1, el_kt_list, sorted_knots, excl_knot[0]) #loop path
-            
-                #{{{
+                print('{0:3}: {1:4d}|'.format('ct',len(ct_path)))
+               
+#{{{
                 i_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'i','knt',layer_name)
                 knots2file(i_file_name, io_path, sorted_knots)
-                print('i_path saved to: {0}'.format(i_file_name))
+#                print('i_path saved to: {0}'.format(i_file_name))
 
                 o_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'o','knt',layer_name)
                 knots2file(o_file_name, [ var[::-1] for var in io_path[::-1]] , sorted_knots)
-                print('o_path saved to: {0}'.format(o_file_name))
+#                print('o_path saved to: {0}'.format(o_file_name))
 
                 ct_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'ct','knt',layer_name)
                 knots2file(ct_file_name, ct_path, sorted_knots)
-                print('ct_path saved to: {0}'.format(ct_file_name))
-                #}}}
+#                print('ct_path saved to: {0}'.format(ct_file_name))
+#}}}
