@@ -413,9 +413,10 @@ Y=[var[1] for var in fold_knots]
 for s1, s2 in zip(pool,pool[1::]):
     x2, y2 = s2[:-1]
     x1, y1 = s1[:-1]
-
+    # print s1[:-1], s2[:-1]
     fold_y = interp_series(X,Y,x2)
-    fold_len = (fold_y**2 + x2**2)**0.5
+    fold_len = (fold_y**2 + (x2-x1)**2)**0.5
+
     unfold_sheet.append([x1 + fold_len, y2, 0])
 
 
