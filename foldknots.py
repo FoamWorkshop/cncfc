@@ -1,6 +1,7 @@
 #!/usr/bin/python
-__author__ = 'FoamWorkshop'
 
+from __future__ import division
+__author__ = 'FoamWorkshop'
 '''
 program options:
 -i [input files | all]
@@ -8,6 +9,9 @@ program options:
 -narc [number o segments] - default 10
 -larc [minimal segment length] - default 1
 -cw   [1|0] default 1: 1 - clockwise; 0 - counter clockwise of the  closed path
+
+1. make list of profile sections
+2. make list of fold knots fitting between selected sections
 
 info:
     the program extracts entities:
@@ -285,6 +289,23 @@ def interp(s1, s2, p):
     s1x, s1y = s1[:-1]
     s2x, s2y = s2[:-1]
     return [p, (s2y - s1y) / (s2x - s1x) * (p - s1x) + s1y, 0]
+
+# def interp(s1,s2,p):
+#     x1, y1 = s1[:-1]
+#     x2, y2 = s2[:-1]
+#     return [p, (y2 - y1)/(x2 - x1)*(p-x1) + y1, 0]
+
+def interp_series(x,y,p):
+    if x[0]>=p:
+        return interp([x[0],y[0],0],[x[1],y[1],0],p)[1]
+    if x[-1]<p:
+        return interp([x[-2],y[-2],0],[x[-1],y[-1],0],p)[1]
+    for i in range(len(x)-1):
+        if x[i]<p<=x[i+1]:
+            return interp([x[i],y[i],0],[x[i+1],y[i+1],0],p)[1]
+
+
+
 #*********************************************************************DEFAULT PARAMETERS
 dflt_o_f = 'all'  #decimal accuracy
 dflt_dec_acc = 3  #decimal accuracy
@@ -304,7 +325,7 @@ dflt_path_dir = 1 #closed path collecting direction
 # fold_f = args.fold
 # o_f = args.output
 
-prof_f = 'ct_sec2_0.knt'
+prof_f = 'i_sec2_0.knt'
 fold_f = 'i_sec2_prof.knt'
 
 prof_knots = read_knots(prof_f)
@@ -312,18 +333,95 @@ fold_knots = read_knots(fold_f)
 
 o_list = []
 
+# for s1, s2 in zip(prof_knots,prof_knots[1::]):
+#     print s1, s2
+#     fold_candidates=[ var for var in fold_knots if var[0] >= s1[0] and var[0] <= s2[0]]
+#     print 'fold knots candidates',fold_candidates
+#     # if fold_candidates:
+#     #     for coord in fold_candidates:
+#     #         o_list.append()
+#     # fold_candidates = []
+#
+# print interp([1,1,0],[2,8,0],1.15)
+
+# prof_knots=[
+# [0, 0, 0],
+# [3, 3,  0],
+# [5, 0, 0],
+# [10,5, 0]
+# ]
+# fold_knots=[
+# [0, 0, 0],
+# [2, 2, 0],
+# [4, 2, 0],
+# [6, 0, 0],
+# [8, 0, 0],
+# [10,3, 0],
+# ]
+print('{0}'.format('='*20))
+
+print '\nprofile knots'
+for var in prof_knots:
+    print var
+
+print '\nfold knots'
+for var in fold_knots:
+    print var
+pool=[]
+print '\n'
+
+#=============OK section
 for s1, s2 in zip(prof_knots,prof_knots[1::]):
+    fit_candidates=[var[0] for var in fold_knots if s1[0]<var[0]<s2[0] or s1[0]>var[0]>s2[0]]
     print s1, s2
-    fold_candidates=[ var for var in fold_knots if var[0] >= s1[0] and var[0] <= s2[0]]
-    print 'fold knots candidates',fold_candidates
-    # if fold_candidates:
-    #     for coord in fold_candidates:
-    #         o_list.append()
-    # fold_candidates = []
+    pool.append(s1)
+    if fit_candidates:
+        if s2[0] >= s1[0]:
+            for extra_point in fit_candidates:
+                point = interp(s1,s2,extra_point)
+                pool.append(point)
+        else:
+            for extra_point in fit_candidates[::-1]:
+                point = interp(s2,s1,extra_point)
+                pool.append(point)
 
-print interp([1,1,0],[2,8,0],1.15)
+
+pool.append(prof_knots[-1])
+
+#=============OK section
+print '\npool knots'
+for var in pool:
+    print('{0:6.2f} {1:6.2f} {2:6.2f}'.format(var[0], var[1], var[2]))
+
+fold_sheet=[]
+X=[var[0] for var in fold_knots]
+Y=[var[1] for var in fold_knots]
+
+for p1 in pool:
+    fold_sheet.append([p1[0],p1[1],interp_series(X,Y,p1[0])])
+
+print '\nfolded sheet'
+for var in fold_sheet:
+    print('{0:6.2f} {1:6.2f} {2:6.2f}'.format(var[0], var[1], var[2]))
+
+#=============
+unfold_sheet=[]
+
+X=[var[0] for var in fold_knots]
+Y=[var[1] for var in fold_knots]
+
+for s1, s2 in zip(pool,pool[1::]):
+    x2, y2 = s2[:-1]
+    x1, y1 = s1[:-1]
+
+    fold_y = interp_series(X,Y,x2)
+    fold_len = (fold_y**2 + x2**2)**0.5
+    unfold_sheet.append([x1 + fold_len, y2, 0])
 
 
+print '\nunfolded knots'
+for var in unfold_sheet:
+    print('{0:6.2f} {1:6.2f} {2:6.2f}'.format(var[0], var[1], var[2]))
 
 
 
