@@ -50,9 +50,14 @@ program algorithm:
         8 - find the ct_path
         9 - save ct_path, io_path and reversed(io_path) to the output files'''
 
+FREECADPATH = '/usr/lib/freecad/lib/' # path to your FreeCAD.so or FreeCAD.dll file
+import sys
+sys.path.append(FREECADPATH)
+import FreeCAD
+from FreeCAD import Base
+import Part
 import os
 import argparse
-import sys
 import dxfgrabber
 import numpy as np
 
@@ -290,6 +295,7 @@ def interp(s1, s2, p):
     s2x, s2y = s2[:-1]
     return [p, (s2y - s1y) / (s2x - s1x) * (p - s1x) + s1y, 0]
 
+
 # def interp(s1,s2,p):
 #     x1, y1 = s1[:-1]
 #     x2, y2 = s2[:-1]
@@ -305,6 +311,13 @@ def interp_series(x,y,p):
             return interp([x[i],y[i],0],[x[i+1],y[i+1],0],p)[1]
 
 
+def knots2face(knots):
+
+    points_list=[Base.Vector(var[0] , var[1] , var[2]) for var in knots]
+    if knots[0] != knots[-1]:
+        points_list.append(points_list[0])
+    poly=Part.makePolygon(points_list)
+    return Part.Face(poly)
 
 #*********************************************************************DEFAULT PARAMETERS
 dflt_o_f = 'all'  #decimal accuracy
@@ -325,7 +338,7 @@ dflt_path_dir = 1 #closed path collecting direction
 # fold_f = args.fold
 # o_f = args.output
 
-prof_f = 'i_sec2_0.knt'
+prof_f = 'ct_sec2_0.knt'
 fold_f = 'i_sec2_prof.knt'
 
 prof_knots = read_knots(prof_f)
@@ -360,16 +373,17 @@ o_list = []
 # ]
 print('{0}'.format('='*20))
 
-print '\nprofile knots'
-for var in prof_knots:
-    print var
+prof_Xmin=min([var[0] for var in prof_knots])
+prof_Xmax=max([var[0] for var in prof_knots])
+prof_Ymin=min([var[1] for var in prof_knots])
+prof_Ymax=max([var[1] for var in prof_knots])
 
-print '\nfold knots'
-for var in fold_knots:
-    print var
+print('profile:\n{4}Xmin: {0}\n{4}Xmax: {1}\n{4}Ymin: {2}\n{4}Ymax: {3}'.format(prof_Xmin, prof_Xmax, prof_Ymin, prof_Ymax,' '*8))
+folds_list=[var for var in fold_knots if prof_Xmin < var[0] < prof_Xmax]
+n_folds=len(folds_list)
+print('folds: {0}'.format(n_folds))
+
 pool=[]
-print '\n'
-
 #=============OK section
 for s1, s2 in zip(prof_knots,prof_knots[1::]):
     fit_candidates=[var[0] for var in fold_knots if s1[0]<var[0]<s2[0] or s1[0]>var[0]>s2[0]]
@@ -385,144 +399,95 @@ for s1, s2 in zip(prof_knots,prof_knots[1::]):
                 point = interp(s2,s1,extra_point)
                 pool.append(point)
 
-
 pool.append(prof_knots[-1])
+print '\ngenerating pool knots: DONE'
 
 #=============OK section
 print '\npool knots'
+Vertex_list=[]
 for var in pool:
     print('{0:6.2f} {1:6.2f} {2:6.2f}'.format(var[0], var[1], var[2]))
 
-fold_sheet=[]
+faces_list=[]
+folds_X = []
+
+folds_X.append(prof_Xmin)
+folds_X.extend([var[0] for var in folds_list])
+folds_X.append(prof_Xmax)
+print '\n\n'
+for b1, b2 in zip(folds_X,folds_X[1::]):
+    faces_list.append([var for var in pool if b1 <= var[0] <= b2])
+
+doc=FreeCAD.newDocument()#'testowy.fcstd')
+
+for i, face in enumerate(faces_list):
+    # print face
+    myPart=doc.addObject('Part::Feature','face_plan{0}'.format(i))
+    myPart.Shape = knots2face(face)
+# print '\nprofile knots'
+# for var in prof_knots:
+#     print var
+#
+print '\nfold knots'
+
+fold_faces_list=[]
 X=[var[0] for var in fold_knots]
 Y=[var[1] for var in fold_knots]
 
-for p1 in pool:
-    fold_sheet.append([p1[0],p1[1],interp_series(X,Y,p1[0])])
+print 'start folding'
+
+for face in faces_list:
+    fold_faces_list.append([[p1[0],p1[1],interp_series(X,Y,p1[0])] for p1 in face])
+
+for i, face in enumerate(fold_faces_list):
+    #print face
+    myPart=doc.addObject('Part::Feature','fold_sheet{0}'.format(i))
+    myPart.Shape = knots2face(face)
 
 print '\nfolded sheet'
-for var in fold_sheet:
-    print('{0:6.2f} {1:6.2f} {2:6.2f}'.format(var[0], var[1], var[2]))
 
 #=============
-unfold_sheet=[]
+unfold_faces_list=[]
 
 X=[var[0] for var in fold_knots]
 Y=[var[1] for var in fold_knots]
-
-for s1, s2 in zip(pool,pool[1::]):
-    x2, y2 = s2[:-1]
-    x1, y1 = s1[:-1]
-    # print s1[:-1], s2[:-1]
-    fold_y = interp_series(X,Y,x2)
-    fold_len = (fold_y**2 + (x2-x1)**2)**0.5
-
-    unfold_sheet.append([x1 + fold_len, y2, 0])
-
-
+acc=0
 print '\nunfolded knots'
-for var in unfold_sheet:
-    print('{0:6.2f} {1:6.2f} {2:6.2f}'.format(var[0], var[1], var[2]))
+uface=[]
+fold_len_list=[]
+# #     print var
+for i, face in enumerate(fold_faces_list[:2]):
+    print 'face   ',i
+    #print('{0:6.2f} {1:6.2f} {2:6.2f}'.format(var[0], var[1], var[2]))
+    for s1, s2 in zip(face,face[1::]):
+        x2, y2 = s2[:2]
+        x1, y1 = s1[:2]
+        dy = interp_series(X,Y,x2) - interp_series(X,Y,x1)
+        dx = x2-x1
+        fold_len = (dy**2 + dx**2)**0.5
+        # if x2>x1:
+        #     uface.append([s1[0]+fold_len,s1[1],s1[2]])
+        # else:
+        #     uface.append([s2[0]+fold_len,s2[1],s2[2]])
 
+        print s1,' ', s2, ' ', fold_len
+        uface.append([s1[0],s1[1],s1[2]])
+        # acc+=fold_len
+        # print 'dx: ',dx, 'dy: ',dy
+        # print 'segment length ', fold_len
+        # fold_len_list.append(acc)
 
+    unfold_faces_list.append(uface)
+    uface=[]
 
+for i, face in enumerate(unfold_faces_list):
+    print 'face ',i
+    for var in face:
+        print var
 
+for i, face in enumerate(unfold_faces_list):
+    #print face
+    myPart=doc.addObject('Part::Feature','unfold_sheet{0}'.format(i))
+    myPart.Shape = knots2face(face)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# dir_path =os.getcwd()
-# dxf_files=[i for i in os.listdir(dir_path) if i.endswith('.dxf')]
-#
-# if dxf_list != 'all':
-#     print dxf_files
-#     files_dxf=[i for i in dxf_files if i in dxf_list]
-#
-# if not files_dxf:
-#     print 'dir does not include dxf files'
-#
-# #else, execute the program
-# else:
-#
-#     print('SETTINGS:')
-#     print('{0}{1:<30}: {2}'.format(' '*10,'decimal accuracy',dec_acc))
-#     print('{0}{1:<30}: {2}'.format(' '*10,'arc segments count',n_arc))
-#     print('{0}{1:<30}: {2}'.format(' '*10,'minimal arc segment length',l_arc))
-#     print('{0}{1:<30}: {2}'.format(' '*10,'closed path collection dir',path_dir))
-#     print('{0}{1:<30}: {2}'.format(' '*10,'files',files_dxf))
-# #{{{print table header
-#     print('\n\n{0:12}|{1:8}|{2:8}|{3:8}|{4:8}|{5:8}|{6:8}|{7:^20}'.format('file','layer','lines','arcs','1 -knt','2 -knt','3 -knt','status'))
-#     print('{0}'.format('-'*80))
-# #}}}print table header
-#     for i, files_dxf_member in enumerate(files_dxf):
-#
-#         case_name=os.path.splitext(files_dxf_member)
-#         dxf = dxfgrabber.readfile(files_dxf_member,{"assure_3d_coords": True})
-#         dxf_layers = dxf.layers
-#
-#         for dxf_layers_member in dxf_layers:
-#             layer_name = dxf_layers_member.name
-#             knots_list, elements_list, shape_count = dxf_read(dxf, dxf_layers_member.name,dec_acc,n_arc, l_arc)
-#             sorted_knots=knots_dict(knots_list)
-#             el_kt_list  =elements_coords2knots(elements_list,sorted_knots)
-#          #   print_list(el_kt_list, ' el kt list ')
-#          #   print_list(sorted_knots,' sorted knots')
-#             knots_rank  =knots_rank_list(el_kt_list, sorted_knots,None)
-#             master_knot =knots_rank_find(knots_rank,3)
-#             IO_knot     =knots_rank_find(knots_rank,1)
-#
-#             print('{0:12}|{1:8}|{2:8}|{3:8}|{4:8}|{5:8}|{6:8}|'.format(files_dxf_member,layer_name,\
-#                                                                        shape_count[0],shape_count[1],\
-#                                         [x[1] for x in knots_rank].count(1),\
-#                                         [x[1] for x in knots_rank].count(2),\
-#                                         [x[1] for x in knots_rank].count(3),' ')),
-#
-#
-#             if len(IO_knot)!=1 or len(master_knot)!=1 or IO_knot[0]==None or master_knot[0]==None:
-#                 print('{0:^20}|'.format('SKIPPED'))
-#
-#             else:
-#
-#                 io_path=find_path(2, el_kt_list, sorted_knots, None) #IO path
-#                 print('{0:3}: {1:4d}|'.format('i/o',len(io_path))),
-#
-#                 last_el, excl_knot = find_l_el(path_dir, el_kt_list, sorted_knots, master_knot[0])
-#
-#                 ct_path=find_path(1, el_kt_list, sorted_knots, excl_knot[0]) #loop path
-#                 print('{0:3}: {1:4d}|'.format('ct',len(ct_path)))
-#
-# #{{{
-#                 i_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'i','knt',layer_name)
-#                 knots2file(i_file_name, io_path, sorted_knots)
-# #                print('i_path saved to: {0}'.format(i_file_name))
-#
-#                 o_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'o','knt',layer_name)
-#                 knots2file(o_file_name, [ var[::-1] for var in io_path[::-1]] , sorted_knots)
-# #                print('o_path saved to: {0}'.format(o_file_name))
-#
-#                 ct_file_name='{1}_{0}_{3}.{2}'.format(case_name[0],'ct','knt',layer_name)
-#                 knots2file(ct_file_name, ct_path, sorted_knots)
-# #                print('ct_path saved to: {0}'.format(ct_file_name))
-# #}}}
+doc.saveAs('testowy.fcstd')
