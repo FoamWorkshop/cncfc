@@ -54,6 +54,7 @@ FREECADPATH = '/usr/lib/freecad/lib/' # path to your FreeCAD.so or FreeCAD.dll f
 import sys
 sys.path.append(FREECADPATH)
 import FreeCAD
+#import PartGui
 from FreeCAD import Base
 import Part
 import os
@@ -310,14 +311,73 @@ def interp_series(x,y,p):
         if x[i]<p<=x[i+1]:
             return interp([x[i],y[i],0],[x[i+1],y[i+1],0],p)[1]
 
+def cross(a, b):
+    c = [a[1]*b[2] - a[2]*b[1],
+         a[2]*b[0] - a[0]*b[2],
+         a[0]*b[1] - a[1]*b[0]]
 
-def knots2face(knots):
+    return c
 
-    points_list=[Base.Vector(var[0] , var[1] , var[2]) for var in knots]
-    if knots[0] != knots[-1]:
-        points_list.append(points_list[0])
+def knots2face(knots, t, offset):
+    knots_list = knots [:]
+    if knots_list[0] != knots_list[-1]:
+        knots_list.append(knots_list[0])
+
+    u1=knots_list[1][0]-knots_list[0][0]
+    u2=knots_list[1][1]-knots_list[0][1]
+    u3=knots_list[1][2]-knots_list[0][2]
+    v1=knots_list[-2][0]- knots_list[-1][0]
+    v2=knots_list[-2][1]- knots_list[-1][1]
+    v3=knots_list[-2][2]- knots_list[-1][2]
+
+    if (u1*v1-u2*v2)>0:
+        knots_list.reverse()
+
+    u1=knots_list[1][0]-knots_list[0][0]
+    u2=knots_list[1][1]-knots_list[0][1]
+    u3=knots_list[1][2]-knots_list[0][2]
+    v1=knots_list[-2][0]- knots_list[-1][0]
+    v2=knots_list[-2][1]- knots_list[-1][1]
+    v3=knots_list[-2][2]- knots_list[-1][2]
+
+    points_list=[Base.Vector(var[0] , var[1] , var[2]) for var in knots_list]
+
     poly=Part.makePolygon(points_list)
-    return Part.Face(poly)
+    face=Part.Face(poly)
+    if t==0:
+        return face
+    else:
+        norm=cross([u1,u2,u3],[v1,v2,v3])
+        norm_len=(norm[0]**2+norm[1]**2+norm[2]**2)**0.5
+        print 'normal vector',[i/norm_len for i in norm]
+        return face.extrude(Base.Vector(norm[0]/norm_len*-t,norm[1]/norm_len*-t,norm[2]/norm_len*-t))
+        #return face.extrude(norm)
+
+def interp_series(x,y,p):
+    if x[0]>=p:
+        return interp([x[0],y[0],0],[x[1],y[1],0],p)[1]
+    if x[-1]<p:
+        return interp([x[-2],y[-2],0],[x[-1],y[-1],0],p)[1]
+    for i in range(len(x)-1):
+        if x[i]<p<=x[i+1]:
+            return interp([x[i],y[i],0],[x[i+1],y[i+1],0],p)[1]
+def dist(x1,y1,x2,y2):
+    return ((x2-x1)**2+(y2-y1)**2)**0.5
+
+def interp_len(x,y): #converts x coord to a path distance from starting point s
+    path_points=zip(x,y)
+    path_segments_point=zip(path_points,path_points[1::])
+    path_segments_lengt=[dist(s1[0],s1[1],s2[0],s2[1]) for s1, s2 in path_segments_point]
+
+    path_dist = 0.0
+    path_segments = [0]
+    for seg_len in path_segments_lengt:
+        path_dist+=seg_len
+        path_segments.append(path_dist)
+
+    return path_segments
+
+
 
 #*********************************************************************DEFAULT PARAMETERS
 dflt_o_f = 'all'  #decimal accuracy
@@ -325,6 +385,7 @@ dflt_dec_acc = 3  #decimal accuracy
 dflt_n_arc = 10   #number of segments
 dflt_l_arc = 1    #minimal segment length
 dflt_path_dir = 1 #closed path collecting direction
+sheet_thickness = 0
 #*********************************************************************PROGRAM
 
 # parser = argparse.ArgumentParser(description='test')
@@ -359,17 +420,21 @@ o_list = []
 
 # prof_knots=[
 # [0, 0, 0],
-# [3, 3,  0],
+# [3, 0,  0],
 # [5, 0, 0],
-# [10,5, 0]
+# [10,5, 0],
+# [10,10, 0],
+# [5, 15, 0],
+# [0, 15, 0],
+# [0, 0, 0]
 # ]
 # fold_knots=[
 # [0, 0, 0],
-# [2, 2, 0],
-# [4, 2, 0],
+# [2, 0, 0],
+# [4, 0, 0],
 # [6, 0, 0],
-# [8, 0, 0],
-# [10,3, 0],
+# [8, 5, 0],
+# [10,20, 0],
 # ]
 print('{0}'.format('='*20))
 
@@ -418,13 +483,12 @@ print '\n\n'
 for b1, b2 in zip(folds_X,folds_X[1::]):
     faces_list.append([var for var in pool if b1 <= var[0] <= b2])
 
-doc=FreeCAD.newDocument()#'testowy.fcstd')
-
-for i, face in enumerate(faces_list):
+#App.getDocument('testowy').addObject('App::DocumentObjectGroup','folded')
+#for i, face in enumerate(faces_list):
     # print face
-    myPart=doc.addObject('Part::Feature','face_plan{0}'.format(i))
-    myPart.Shape = knots2face(face)
-# print '\nprofile knots'
+#    myPart=doc.addObject('Part::Feature','face_plan{0}'.format(i))
+#    myPart.Shape = knots2face(face)
+# print '\nprofile knots'}
 # for var in prof_knots:
 #     print var
 #
@@ -439,12 +503,9 @@ print 'start folding'
 for face in faces_list:
     fold_faces_list.append([[p1[0],p1[1],interp_series(X,Y,p1[0])] for p1 in face])
 
-for i, face in enumerate(fold_faces_list):
-    #print face
-    myPart=doc.addObject('Part::Feature','fold_sheet{0}'.format(i))
-    myPart.Shape = knots2face(face)
-
-print '\nfolded sheet'
+doc=FreeCAD.newDocument('testowy')#'testowy.fcstd')
+myPart=doc.addObject('Part::Feature','fold_sheet')
+myPart.Shape=Part.Compound([knots2face(face,sheet_thickness,0) for face in fold_faces_list])
 
 #=============
 unfold_faces_list=[]
@@ -456,38 +517,30 @@ print '\nunfolded knots'
 uface=[]
 fold_len_list=[]
 # #     print var
-for i, face in enumerate(fold_faces_list[:2]):
-    print 'face   ',i
-    #print('{0:6.2f} {1:6.2f} {2:6.2f}'.format(var[0], var[1], var[2]))
-    for s1, s2 in zip(face,face[1::]):
-        x2, y2 = s2[:2]
-        x1, y1 = s1[:2]
-        dy = interp_series(X,Y,x2) - interp_series(X,Y,x1)
-        dx = x2-x1
-        fold_len = (dy**2 + dx**2)**0.5
-        # if x2>x1:
-        #     uface.append([s1[0]+fold_len,s1[1],s1[2]])
-        # else:
-        #     uface.append([s2[0]+fold_len,s2[1],s2[2]])
 
-        print s1,' ', s2, ' ', fold_len
-        uface.append([s1[0],s1[1],s1[2]])
-        # acc+=fold_len
-        # print 'dx: ',dx, 'dy: ',dy
-        # print 'segment length ', fold_len
-        # fold_len_list.append(acc)
+unfold_faces_list=[]
+fc_unfold_faces_list=[]
+X=[var[0] for var in fold_knots]
+Y=[var[1] for var in fold_knots]
+x_len=interp_len(X,Y)
+x0_len = interp_series(X,x_len,pool[0][0])
+print 'start unfolding'
 
-    unfold_faces_list.append(uface)
-    uface=[]
+unfld_grp=doc.addObject('App::DocumentObjectGroup','unfold_sheet')
+for face in faces_list:
+   fc_unfold_faces_list.append([[interp_series(X,x_len,p1[0])-x0_len,p1[1],0] for p1 in face])
+
+myPart=doc.addObject('Part::Feature','unfold_sheet')
+myPart.Shape=Part.Compound([knots2face(face,sheet_thickness,0) for face in fc_unfold_faces_list])
+unfld_grp.addObject(myPart)
+
+#for face in faces_list:
+unfold_faces_list.append([[interp_series(X,x_len,p1[0])-x0_len,p1[1],0] for p1 in pool])
+
 
 for i, face in enumerate(unfold_faces_list):
     print 'face ',i
     for var in face:
         print var
-
-for i, face in enumerate(unfold_faces_list):
-    #print face
-    myPart=doc.addObject('Part::Feature','unfold_sheet{0}'.format(i))
-    myPart.Shape = knots2face(face)
 
 doc.saveAs('testowy.fcstd')
