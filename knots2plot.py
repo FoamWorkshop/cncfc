@@ -1,23 +1,20 @@
 #!/usr/bin/python
 '''the purpose of the program is to generate 3d model for FreeCAD from 2 given sections'''
-FREECADPATH = '/usr/lib/freecad/lib/' # path to your FreeCAD.so or FreeCAD.dll file
-import sys
-sys.path.append(FREECADPATH)
-import os
+# import os
+# import sys
 import numpy as np
+import matplotlib.pyplot as plt
 import numpy.linalg as npl
 import xml.etree.ElementTree as ET
-import matplotlib.pyplot as plt
+import argparse
 
-import FreeCAD
-import Part
 
-## another test
+from cncfclib import *
 from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import interp1d
 from scipy.spatial import distance
 
-#test
+
 
 def set_axes_equal(ax):
     '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
@@ -167,212 +164,99 @@ def gcodexyuv(dataxy, datauv):
         fgcode.close()
         return tmp
 
+
+
+lines = []
+col_list = ['b', 'g', 'r', 'c', 'm', 'y', 'k']
+arrow_length = 30
+parser = argparse.ArgumentParser(description='plot knots')
+parser.add_argument('-i',
+                    '--input',
+                    nargs='+',
+                    type=str,
+                    default=[],
+                    help='input knots filenames')
+parser.add_argument('-m',
+                    '--marker',
+                    type=str,
+                    default='',
+                    help='marker type')
+
+args = parser.parse_args()
+
+input_file_list = args.input
+plt_marker = args.marker
+
+if not input_file_list:
+    input_file_list.extend([i for i in os.listdir('.') if i.endswith('.knt')])
+    input_file_list.sort()
+
+fig, ax = plt.subplots()
+i = 0
+for input_file in input_file_list:
+
+    data = read_data(input_file, msg=True)
+    if data:
+        x1 = [var[0] for var in data]
+        y1 = [var[1] for var in data]
+
+        line, = ax.plot(x1, y1, lw=2, marker=plt_marker,
+                        color=col_list[i], label=input_file)
+        lines.append(line)
+        seg_len = ((x1[1] - x1[0])**2 + (y1[1] - y1[0])**2)**0.5
+        len_rat = arrow_length / seg_len
+        x2 = x1[0] + (x1[1] - x1[0]) * len_rat
+        y2 = y1[0] + (y1[1] - y1[0]) * len_rat
+        ax.annotate('({0:.2f},{1:.2f})'.format(x1[0], y1[0]),
+                    xy=(x2, y2),
+                    xytext=(x1[0], y1[0]),
+                    arrowprops=dict(fc=col_list[i], ec=col_list[
+                                    i], width=4, frac=0.1, shrink=0.1),
+                    fontsize=6,
+                    horizontalalignment='center',
+                    verticalalignment='center',)
+# head_width=0.05, head_length=0.1,
+        if i == len(col_list) - 1:
+            i = 0
+        else:
+            i += 1
+
+        # arrows1.append(ax.plot(x1[0], y1[0],lw=1, marker='s',color='r',ms=10)[0])
+        # arrows2.append(ax.plot(x1[1], y1[1],lw=1, marker='*',color='r',ms=10)[0])
+        # for no, (x, y) in enumerate(zip(x1,y1)):
+        #     # print('{0} ({1}, {2})'.format(i,x,y))
+        # ax.text(x,y,'{0}'.format(no+1,x,y),fontsize=6) # ({1:.2f}, {2:.2f})
+
+# legend display
+leg = ax.legend(loc='upper left')
+leg.get_frame().set_alpha(0.4)
+# legend display
+
+lined = dict()
+
+
+for legline, origline in zip(leg.get_lines(), lines):
+    legline.set_picker(5)  # 7 pts tolerance
+    lined[legline] = origline
+
+
+def onpick(event):
+    # on the pick event, find the orig line corresponding to the
+    # legend proxy line, and toggle the visibility
+    legline = event.artist
+    origline = lined[legline]
+    vis = not origline.get_visible()
+    origline.set_visible(vis)
+    # Change the alpha on the line in the legend so we can see what lines
+    # have been toggled
+    if vis:
+        legline.set_alpha(1.0)
     else:
-        print "nie mozna wygenerowac g codu. rozne dlugosci sciezek."
-        return 0
+        legline.set_alpha(0.2)
+    fig.canvas.draw()
 
-def read_data(f_name):
-    f=open(f_name,'r')
-    data=[]
+fig.canvas.mpl_connect('pick_event', onpick)
 
-    for line in f:
-        tmp=line.split()
-        x,y,z=0,0,0
-        if len(tmp)==2:
-            x,y=tmp
-            z=0
-        if len(tmp)==3:
-            x,y,z=tmp
-        data.append([float(x),float(y),float(z)])
-    f.close()
-    print("\nsection: {0}    nodes: {1}".format(f_name,len(data)))
-    return data
-
-
-def PolyArea(x,y):
-    return 0.5*np.abs(np.dot(x,np.roll(y,1))-np.dot(y,np.roll(x,1)))
-
-def silentremove(filename):
-    if os.path.exists(filename):
-        os.remove(filename)
-def points2face(points):
-    fc_profile1_elems=[]
-
-    for p1, p2 in zip(points, points[1:]):
-        fc_profile1_elems.append(Part.makeLine(p1, p2))
-
-    fc_profile1_wire=Part.Wire(fc_profile1_elems)
-    return Part.Face(fc_profile1_wire)
-
-def balance_points(data1, data2):
-    '''function balances 2 data sets, data2 to data1'''
-    dist_1=[]
-    dist_2=[]
-    buff=[]
-    x=[]
-    y=[]
-    z=[]
-    data1_u=[]
-    data1_N=len(data1)
-    data2_N=len(data2)
-    cos_uv=[]
-    #  length_set=[]
-    dist_1.append(0)
-    dist_1.extend([distance.euclidean(u,v) for u, v in zip(data1, data1[1:])])
-    length_1=np.cumsum(dist_1)
-
-    dist_2.append(0)
-    dist_2.extend([distance.euclidean(u,v) for u, v in zip(data2, data2[1:])])
-    length_2=np.cumsum(dist_2)
-    #print data1[6][0]
-    data1_A=0
-
-    for i in range(data1_N-1):
-         data1_A+=0.5*( data1[i][0]*data1[i+1][1]-data1[i][1]*data1[i+1][0])
-
-    data1_C1=0
-    data1_C2=0
-    for i in range(data1_N-1):
-         data1_C1+=1/(6*data1_A)*(data1[i][0]+data1[i+1][0])*(data1[i][0]*data1[i+1][1]-data1[i][1]*data1[i+1][0])
-         data1_C2+=1/(6*data1_A)*(data1[i][1]+data1[i+1][1])*(data1[i][0]*data1[i+1][1]-data1[i][1]*data1[i+1][0])
-
-    print("total length data1: {0},\narea: {1},\nC1: {2}\nC2: {3}".format(length_1[-1], data1_A,data1_C1,data1_C2))
-
-    data1_u=[(var[0]-data1_C1,var[1]-data1_C2) for var in data1]
-    data2_u=[(var[0]-data1_C1,var[1]-data1_C2) for var in data2]
-
-    print("\n ====data1 vectors===")
-
-    for var in data1_u:
-        print var
-
-    print("\n ====data2 vectors===")
-
-    for var in data2_u:
-        print var
-
-
-    # data1_x=[ var[0] for var in data1]
-    # data1_y=[ var[1] for var in data1]
-    # data1_z=[ var[2] for var in data1]
-
-   # print data1_x
-
-
-#    f21=length_1[-1] / length_2[-1]
-
- #   print("total length data1: {0},\ntotal length data2: {1},\nconversion factor: {2}\n".format(length_1[-1], length_2[-1],f21))
-
-    # length_set=list(set(length_1)|set(length_2))
-    # length_set.sort()
-    # for i in length_set:
-    #     print i
-    # print 'length 1'
-    # for i in length_1:
-    #     print i
-
-    # print 'length 2'
-    # for i in length_2:
-    #     print i
-
-    # print 'length 2 *f21'
-    # for i in length_2:
-    #     print i*f21
-
-
-    # buff=[(np.interp(dl,length_1,data1_x),\
-    #        np.interp(dl,length_1,data1_y),\
-    #        np.interp(dl,length_1 ,data1_z)) for dl in length_set]
-
-
-    # return buff
-
-dist_z=2
-span=225
-dihedral=2
-test_data1=[]
-
-#dataxy=read_data('naca2416.dat')
-#datauv=read_data('naca0012.dat')
-airfoil_root = 'naca2416'
-airfoil_tip = 'naca0012'
-datauv=read_data(airfoil_tip+'.dat')
-dataxy=read_data(airfoil_root+'.dat')
-#test_data1=balance_points(dataxy,datauv)
-#test_data2=balance_points(datauv,dataxy)
-
-# print("\nproject datauv to dataxy")
-# for var in test_data1:
-#     print("{0}".format(var))
-
-# print("\nproject dataxy to datauv")
-# for var in test_data2:
-#     print("{0}".format(var))
-
-
-
-
-pathxy=path_points(dataxy)
-pathuv=path_points(datauv)
-
-pathxy.scale(120, 120)
-pathxy.rotate(0, 0, 0)
-pathxy.translate(0, 0, 0.5*(dist_z+span))
-
-pathuv.scale(80.5, 80.5)
-pathuv.rotate(0, 0, 0)
-pathuv.translate(17.25, 10, 0.5*(dist_z-span))
-
-cut_obj=model(pathxy.data,pathuv.data)
-
-mashpathxy=path_points(p_l_intersection_series([0,0,dist_z],[0,0,1],pathxy.data,pathuv.data))
-
-mashpathuv=path_points(p_l_intersection_series([0,0,0],[0,0,1],pathuv.data,pathxy.data))
-
-#for var in collection:
-
-mashpathxy.scale(1, 1)
-mashpathxy.rotate(0, 0, 0)
-mashpathxy.translate(0, 0, dist_z)
-
-mashpathuv.scale(0.7, 0.7)
-mashpathuv.rotate(0, 0, 5)
-mashpathuv.translate(10, 0, 0)
-
-#plot_path2d(pathxy.data, pathuv.data, mashpathxy.data, mashpathuv.data)
-#plot_path3d(pathxy.data, pathuv.data, mashpathxy.data, mashpathuv.data)
-
-# # #gcodexyuv(pathxy.data, pathuv.data)
-
-
-doc=FreeCAD.newDocument()#'testowy.fcstd')
-
-myPart=doc.addObject('Part::Feature','wing')
-
-#cube = Part.makeBox(2,2,2)
-#p1=Part.Point(1,2,3)
-#p2=Part.Point(123,311,312)
-points1=pathxy.data
-points2=pathuv.data
-
-face1=points2face(points1)
-face2=points2face(points2)
-# fc_profile1_elems=[]
-
-# for p1, p2 in zip(points1,points1[1:]):
-#     fc_profile1_elems.append(Part.makeLine(p1, p2))
-
-# fc_profile1_wire=Part.Wire(seg) fc_profile1_face=Part.Face(fc_profile1_wire)
-poly1=Part.makePolygon(points1)
-poly2=Part.makePolygon(points2)
-
-myPart.Shape = Part.makeLoft([poly1,poly2], True)
-
-#fc_profile1_face
-
-#myPart.Shape = cube
-#vo.show
-#doc.recompute()
-silentremove('test_data1')
-doc.saveAs(airfoil_root+'_'+airfoil_tip+'.fcstd')
-#FreeCAD.closeDocument('test_data1.fcstd')
+plt.axis('equal')
+plt.grid(True)
+plt.show()
