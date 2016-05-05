@@ -31,15 +31,19 @@ def read_data(f_name, msg='False'):
 def write_data(f_name, data, msg='False'):
     i = 0
 
-    bak_f_name = f_name+'.00.bak'
+    if os.path.isfile(f_name):
 
-    while os.path.isfile(bak_f_name):
-        bak_f_name = '{0}.{1:{fill}>2s}.bak'.format(f_name, str(i), fill='0')
-        i += 1
+        bak_f_name = f_name + '.00.bak'
 
-    os.rename(f_name, bak_f_name)
+        while os.path.isfile(bak_f_name):
+            bak_f_name = '{0}.{1:{fill}>2s}.bak'.format(
+                f_name, str(i), fill='0')
+            i += 1
+
+        os.rename(f_name, bak_f_name)
+
     if msg:
-        print("{0:<24} -> {1}".format(f_name, bak_f_name))
+        print("{0:<24} -> {0}".format(f_name))
 
     with open(f_name, 'w') as f:
         for line in data:
