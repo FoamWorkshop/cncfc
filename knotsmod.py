@@ -46,18 +46,15 @@ class path_points:
         self.data = [(line[0] * sc[0], line[1] * sc[1], line[2] * sc[2])
                      for line in self.data]
 
-
-def silentremove(filename):
-    if os.path.exists(filename):
-        os.remove(filename)
-
 #*********************************************************************DEFAULlist = 'all'  #decimal accuracy
 dflt_output_file = 3  # decimal accuracydfl,number of segments
 dflt_rotate = 1  # minimal segment lengthelp  1 #closed path collecting direction
 #*****************************************parser = argparse.ArgumentParser(description='test')
 parser = argparse.ArgumentParser(description='knots modifier')
-parser.add_argument('-i', '--input', type=str, help='input filename')
-parser.add_argument('-o', '--output', type=str, help='output filename')
+parser.add_argument('-i', '--input', nargs='+',
+                    type=str, help='input filename')
+parser.add_argument('-o', '--output', nargs='+',
+                    type=str, help='output filename')
 parser.add_argument('-s', '--scale', nargs='+', type=float, help='scale')
 parser.add_argument('-r', '--rotate', nargs='+', type=float, help='rotate')
 parser.add_argument('-t', '--translate', nargs='+',
@@ -66,33 +63,38 @@ parser.add_argument('-t', '--translate', nargs='+',
 args = parser.parse_args()
 
 
-input_file = args.input
+input_file_list = args.input
 output_file = args.output
 scale_args = args.scale
 rotate_args = args.rotate
 translate_args = args.translate
 
-dataxy = read_data(input_file)
+for input_file in input_file_list:
+    dataxy = []
+    print('{1}\nprocessing: {0}\n{1}'.format(input_file,'-'*24))
+    dataxy = read_data(input_file)
 
-if dataxy:
-    pathxy = path_points(dataxy)
+    if dataxy:
+        pathxy = path_points(dataxy)
 
-    if scale_args and len(scale_args) == 3:
-        print('scale: [{0:.2f} {1:.2f} {2:.2f}]'.format(
-            scale_args[0], scale_args[1], scale_args[2]))
-        pathxy.scale(scale_args)
+        if scale_args and len(scale_args) == 3:
+            print('scale: [{0:.2f} {1:.2f} {2:.2f}]'.format(
+                scale_args[0], scale_args[1], scale_args[2]))
+            pathxy.scale(scale_args)
 
-    if rotate_args and len(rotate_args) == 3:
-        print('rotate: [{0:.2f} {1:.2f}] angle {2:.2f}'.format(
-            rotate_args[0], rotate_args[1], rotate_args[2]))
-        pathxy.rotate(rotate_args)
+        if rotate_args and len(rotate_args) == 3:
+            print('rotate: [{0:.2f} {1:.2f}] angle {2:.2f}'.format(
+                rotate_args[0], rotate_args[1], rotate_args[2]))
+            pathxy.rotate(rotate_args)
 
-    if translate_args and len(translate_args) == 3:
-        print('translate: [{0:.2f} {1:.2f} {2:.2f}]'.format(
-            translate_args[0], translate_args[1], translate_args[2]))
-        pathxy.translate(translate_args)
+        if translate_args and len(translate_args) == 3:
+            print('translate: [{0:.2f} {1:.2f} {2:.2f}]'.format(
+                translate_args[0], translate_args[1], translate_args[2]))
+            pathxy.translate(translate_args)
 
-    if not output_file:
-        output_file = input_file
+        if not output_file:
+            output_file = input_file
 
-    write_data(output_file, pathxy.data, msg=True)
+        write_data(output_file, pathxy.data, msg=True)
+
+    output_file=[]
