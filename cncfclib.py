@@ -42,8 +42,8 @@ def write_data(f_name, data, msg='False'):
 
         os.rename(f_name, bak_f_name)
 
-    if msg:
-        print("{0:<24} -> {0}".format(f_name))
+        if msg:
+            print("{0:<24} -> {1}".format(f_name, bak_f_name))
 
     with open(f_name, 'w') as f:
         for line in data:
