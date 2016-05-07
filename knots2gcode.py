@@ -190,6 +190,7 @@ if len(knt_list)==1:
     knt_set_xy = knt_list[0]
     knt_set_uv = knt_list[0]
 
+
 elif len(knt_list)>=2:
     knt_set_xy = knt_list[0]
     knt_set_uv = knt_list[1]
@@ -199,6 +200,11 @@ if not output_f_name:
 
 knt_data_xy = read_data(knt_set_xy, True)
 knt_data_uv = read_data(knt_set_uv, True)
+
+if knt_set_xy==knt_set_uv:
+    pool=knt_data_xy
+    knt_data_xy=[[varxy[0], varxy[1],  1] for varxy in pool]
+    knt_data_uv=[[varuv[0], varuv[1], -1] for varuv in pool]
 
 if len(knt_set_xy)!=len(knt_set_uv):
     print('knots: {0} - {1} are not balanced. EXIT'.format(knt_set_xy, knt_set_uv))
