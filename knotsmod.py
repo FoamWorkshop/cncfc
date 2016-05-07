@@ -69,6 +69,10 @@ scale_args = args.scale
 rotate_args = args.rotate
 translate_args = args.translate
 
+if not input_file_list:
+    dir_path = os.getcwd()
+    input_file_list = [i for i in os.listdir(dir_path) if i.endswith('.knt')]
+
 for input_file in input_file_list:
     dataxy = []
     print('{1}\nprocessing: {0}\n{1}'.format(input_file,'-'*24))
