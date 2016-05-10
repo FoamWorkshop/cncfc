@@ -201,16 +201,18 @@ if not output_f_name:
 knt_data_xy = read_data(knt_set_xy, True)
 knt_data_uv = read_data(knt_set_uv, True)
 
-if knt_set_xy==knt_set_uv:
-    pool=knt_data_xy
-    knt_data_xy=[[varxy[0], varxy[1],  1] for varxy in pool]
-    knt_data_uv=[[varuv[0], varuv[1], -1] for varuv in pool]
+
 
 if len(knt_set_xy)!=len(knt_set_uv):
     print('knots: {0} - {1} are not balanced. EXIT'.format(knt_set_xy, knt_set_uv))
 else:
     print('processing knots: {0} - {1}'.format(knt_set_xy, knt_set_uv))
 
+    pool=zip(knt_data_xy, knt_data_uv)
+    knt_data_xy=[[varxy[0], varxy[1], varxy[2]+int(not(varxy[2]-varuv[2]))] for varxy, varuv in pool]
+    knt_data_uv=[[varuv[0], varuv[1], varuv[2]-int(not(varxy[2]-varuv[2]))] for varxy, varuv in pool]
+
+    pool=[]
     if center_model:
         # for varxy, varuv in zip(knt_data_xy, knt_data_uv):
         pool=zip(knt_data_xy, knt_data_uv)
@@ -221,6 +223,6 @@ else:
     mashpathxy=p_l_intersection_series([0,0,d *  d_rat   ],[0,0,1],knt_data_xy,knt_data_uv)
     mashpathuv=p_l_intersection_series([0,0,d * (d_rat-1)],[0,0,1],knt_data_uv,knt_data_xy)
 
-    write_data(knt_set_xy.replace('.knt','_xy.knt'),mashpathxy,True)
-    write_data(knt_set_uv.replace('.knt','_uv.knt'),mashpathuv,True)
+    write_data('_'.join('xy',knt_set_xy),mashpathxy,True)
+    write_data('_'.join('uv',knt_set_xy),mashpathuv,True)
     knots2gcode(mashpathxy, mashpathuv, output_f_name, global_header, subset_header)
