@@ -1,4 +1,5 @@
 #!/usr/bin/python
+from __future__ import division
 __author__ = 'FoamWorkshop'
 
 '''
@@ -287,15 +288,14 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 
 #*********************************************************************DEFAULT PARAMETERS
 dflt_dxf_list = 'all'  # decimal accuracy
-dflt_dec_acc = 3  # decimal accuracy
+dflt_dec_acc = 4 # decimal accuracy
 dflt_n_arc = 10  # number of segments
-dflt_l_arc = 1  # minimal segment length
+dflt_l_arc = 0.1  # minimal segment length
 dflt_path_dir = 1  # closed path collecting direction
 #*********************************************************************PROGRAM
 
 parser = argparse.ArgumentParser(description='test')
-parser.add_argument('-i', '--input', nargs='*',
-                    default=dflt_dxf_list, help='input filenames')
+parser.add_argument('-i', '--input', nargs='+', help='input filenames')
 parser.add_argument('-a', '--accuracy', type=int,
                     default=dflt_dec_acc, help='decimal accuracy, default: 3')
 parser.add_argument('-narc', '--arc_seg_num', type=int,
@@ -316,9 +316,12 @@ path_dir = args.collection_dir
 dir_path = os.getcwd()
 dxf_files = [i for i in os.listdir(dir_path) if i.endswith('.dxf')]
 
-if dxf_list != 'all':
+if dxf_list:
     print dxf_files
     files_dxf = [i for i in dxf_files if i in dxf_list]
+else:
+    files_dxf = dxf_files
+
 
 if not files_dxf:
     print 'dir does not include dxf files'
