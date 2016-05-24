@@ -288,7 +288,7 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 
 #*********************************************************************DEFAULT PARAMETERS
 dflt_dxf_list = 'all'  # decimal accuracy
-dflt_dec_acc = 4 # decimal accuracy
+dflt_dec_acc = 4  # decimal accuracy
 dflt_n_arc = 10  # number of segments
 dflt_l_arc = 0.1  # minimal segment length
 dflt_path_dir = 1  # closed path collecting direction
@@ -371,6 +371,17 @@ else:
 
             if len(IO_knot) != 1 or len(master_knot) != 1 or IO_knot[0] == None or master_knot[0] == None:
                 print('{0:^20}|'.format('SKIPPED'))
+                # for var in IO_knot:
+                #     print("IO knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
+                #
+                # for var in master_knot:
+                #     print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
+                #
+                # for var in knots_rank:
+                #     print("knots rank: {0}".format(var))
+                #
+                # var =10
+                # print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
 
             else:
 

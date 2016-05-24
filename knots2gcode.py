@@ -160,7 +160,7 @@ dflt_dec_acc = 3  # decimal accuracy
 dflt_n_arc = 10  # number of segments
 dflt_l_arc = 1  # minimal segment length
 dflt_path_dir = 1  # closed path collecting direction
-d=500
+d=445
 d_rat = 0.5
 #*********************************************************************PROGRAM
 knt_data = []
@@ -223,6 +223,6 @@ else:
     mashpathxy=p_l_intersection_series([0,0,d *  d_rat   ],[0,0,1],knt_data_xy,knt_data_uv)
     mashpathuv=p_l_intersection_series([0,0,d * (d_rat-1)],[0,0,1],knt_data_uv,knt_data_xy)
 
-    write_data('_'.join('xy',knt_set_xy),mashpathxy,True)
-    write_data('_'.join('uv',knt_set_xy),mashpathuv,True)
+    write_data('{0}_{1}.knt'.format('xy',output_f_name),mashpathxy,True)
+    write_data('{0}_{1}.knt'.format('uv',output_f_name),mashpathuv,True)
     knots2gcode(mashpathxy, mashpathuv, output_f_name, global_header, subset_header)
