@@ -8,12 +8,12 @@ def p_l_intersection(V0, n, P0, P1, coord='rel'):
     w = np.subtract(P0, V0)
     s = (-np.dot(n,w)) / (np.dot(n, u))
     su = np.multiply(s, u)
-    
+
     Ps = np.add(w, su)
 
     if coord == 'abs':
         Ps = np.add(Ps , V0)
-    
+
     return Ps
 
 V0 = [0, 0, 100]
@@ -52,8 +52,8 @@ print("UV2: [{0[0]:6.2f}, {0[1]:6.2f}, {0[2]:6.2f}]".format(UV2))
 print ('results check:')
 print ('XY0 UV0 vector length: {0:6.2f}'.format(np.linalg.norm(np.subtract(XY0,UV0))))
 print ('XY UV planes distance: {0}'.format(260))
-print ('angle: {0}'.format(np.rad2deg(np.arccos(260/np.linalg.norm(np.subtract(XY0,UV0)))))) 
+print ('angle: {0}'.format(np.rad2deg(np.arccos(260/np.linalg.norm(np.subtract(XY0,UV0))))))
 
 print ('XY2 UV2 vector length: {0:6.2f}'.format(np.linalg.norm(np.subtract(XY2,UV2))))
 print ('XY UV planes distance: {0}'.format(260))
-print ('angle: {0}'.format(np.rad2deg(np.arccos(260/np.linalg.norm(np.subtract(XY2,UV2)))))) 
+print ('angle: {0}'.format(np.rad2deg(np.arccos(260/np.linalg.norm(np.subtract(XY2,UV2))))))
