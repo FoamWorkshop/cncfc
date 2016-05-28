@@ -30,7 +30,7 @@ def read_data(f_name, msg='False'):
 
 def write_data(f_name, data, msg='False'):
     i = 0
-
+    print 'assigned file name', f_name
     if os.path.isfile(f_name):
 
         bak_f_name = f_name + '.00.bak'
