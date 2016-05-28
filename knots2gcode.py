@@ -58,63 +58,6 @@ def knots2gcode(ct_pathxy, ct_pathuv, name='gcode', global_header='False', subse
         if global_header:
             f.write("M2 (program end)")
 
-
-
-
-def set_axes_equal(ax):
-    '''Make axes of 3D plot have equal scale so that spheres appear as spheres,
-    cubes as cubes, etc..  This is one possible solution to Matplotlib's
-    ax.set_aspect('equal') and ax.axis('equal') not working for 3D.
-
-    Input
-      ax: a matplotlib axis, e.g., as output from plt.gca().
-    '''
-
-    x_limits = ax.get_xlim3d()
-    y_limits = ax.get_ylim3d()
-    z_limits = ax.get_zlim3d()
-
-    x_range = x_limits[1] - x_limits[0]; x_mean = np.mean(x_limits)
-    y_range = y_limits[1] - y_limits[0]; y_mean = np.mean(y_limits)
-    z_range = z_limits[1] - z_limits[0]; z_mean = np.mean(z_limits)
-
-    # The plot bounding box is a sphere in the sense of the infinityl
-    # norm, hence I call half the max range the plot radius.
-    plot_radius = 0.5*max([x_range, y_range, z_range])
-
-    ax.set_xlim3d([x_mean - plot_radius, x_mean + plot_radius])
-    ax.set_ylim3d([y_mean - plot_radius, y_mean + plot_radius])
-    ax.set_zlim3d([z_mean - plot_radius, z_mean + plot_radius])
-
-def plot_path3d(data1, data2, data3, data4):
-    x1=[x for [x, y, z] in data1]
-    y1=[y for [x, y, z] in data1]
-    z1=[z for [x, y, z] in data1]
-
-    x2=[x for [x, y, z] in data2]
-    y2=[y for [x, y, z] in data2]
-    z2=[z for [x, y, z] in data2]
-
-    mx1=[x for [x, y, z] in data3]
-    my1=[y for [x, y, z] in data3]
-    mz1=[z for [x, y, z] in data3]
-
-    mx2=[x for [x, y, z] in data4]
-    my2=[y for [x, y, z] in data4]
-    mz2=[z for [x, y, z] in data4]
-
-    fig=plt.figure()
-    ax=fig.gca(projection='3d')
-    pltxy=ax.plot(x1, y1, z1,label='xy')
-    pltuv=ax.plot(x2, y2, z2,label='uv')
-    mashpltxy=ax.plot(mx1, my1, mz1,label='mxy')
-    mashpltuv=ax.plot(mx2, my2, mz2,label='muv')
-
-    ax.legend()
-    set_axes_equal(ax)
-    plt.show()
-    plt.hold(True)
-
 def p_l_intersection(p0,vec_n,l0,l1):
     vec_l=np.subtract(l1,l0)
     param1=np.subtract(p0,l0)
@@ -194,6 +137,8 @@ if len(knt_list)==1:
 elif len(knt_list)>=2:
     knt_set_xy = knt_list[0]
     knt_set_uv = knt_list[1]
+    print '1xy:',knt_set_xy
+    print '1uv:',knt_set_uv
 
 if not output_f_name:
     output_f_name='_'.join([knt_set_xy.replace('.knt',''),knt_set_uv.replace('.knt','')])
@@ -218,6 +163,8 @@ else:
         pool=zip(knt_data_xy, knt_data_uv)
         knt_data_xy=[[varxy[0], varxy[1], varxy[2]-0.5*(varxy[2]+varuv[2])] for varxy, varuv in pool]
         knt_data_uv=[[varuv[0], varuv[1], varuv[2]-0.5*(varxy[2]+varuv[2])] for varxy, varuv in pool]
+
+
 
 
     mashpathxy=p_l_intersection_series([0,0,d *  d_rat   ],[0,0,1],knt_data_xy,knt_data_uv)
