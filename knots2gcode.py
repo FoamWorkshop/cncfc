@@ -107,7 +107,7 @@ dflt_l_arc = 1  # minimal segment length
 dflt_path_dir = 1  # closed path collecting direction
 d=445
 d_rat = 0.5
-symm_pref = 'symm'
+symm_pref = 's'
 #*********************************************************************PROGRAM
 knt_data = []
 parser = argparse.ArgumentParser(description='test')
@@ -175,5 +175,4 @@ else:
     knots2gcode(mashpathxy, mashpathuv, output_f_name, global_header, subset_header)
 
     if symm_stat:
-        knots2gcode(mashpathuv, mashpathxy, '_'.join(symm_pref, output_f_name), global_header, subset_header)
-        
+        knots2gcode(mashpathuv, mashpathxy, ''.join([symm_pref, output_f_name]), global_header, subset_header)
