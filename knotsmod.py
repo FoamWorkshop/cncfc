@@ -45,6 +45,23 @@ class path_points:
     def scale(self, sc):
         self.data = [(line[0] * sc[0], line[1] * sc[1], line[2] * sc[2])
                      for line in self.data]
+ 
+    def origin(self, opt_list):
+
+        stat_X= [min(self.data, key= lambda x: x[0]), max(self.data, key= lambda x: x[0])]
+        stat_Y= [min(self.data, key= lambda x: x[1]), max(self.data, key= lambda x: x[1])]
+        offset_X = 0
+        offset_Y = 0
+
+        for opt in opt_list:
+            if opt=='maxX': offset_X= -stat_X[1] 
+            if opt=='minX': offset_X= -stat_X[0]
+            if opt=='maxY': offset_Y= -stat_Y[1] 
+            if opt=='minY': offset_Y= -stat_Y[0] 
+            if opt=='symX': offset_X= -(0.5 * sum(stat_X)) 
+            if opt=='symY': offset_Y= -(0.5 * sum(stat_Y)) 
+                
+        self.data=path_points.translate([offset_X, offset_Y])                    
 
 #*********************************************************************DEFAULlist = 'all'  #decimal accuracy
 dflt_output_file = 3  # decimal accuracydfl,number of segments
@@ -59,7 +76,8 @@ parser.add_argument('-s', '--scale', nargs='+', type=float, help='scale')
 parser.add_argument('-r', '--rotate', nargs='+', type=float, help='rotate')
 parser.add_argument('-t', '--translate', nargs='+',
                     type=float, help='translate')
-
+parser.add_argument('-org', '--origin', nargs='+',
+                    type=str, help='adjust origin: maxX, minX, maxY, minY, symX, symY')
 args = parser.parse_args()
 
 
@@ -68,6 +86,7 @@ output_file = args.output
 scale_args = args.scale
 rotate_args = args.rotate
 translate_args = args.translate
+org_args = args.origin
 
 if not input_file_list:
     dir_path = os.getcwd()
@@ -95,6 +114,10 @@ for input_file in input_file_list:
             print('translate: [{0:.2f} {1:.2f} {2:.2f}]'.format(
                 translate_args[0], translate_args[1], translate_args[2]))
             pathxy.translate(translate_args)
+
+        if org_args:
+            print('adjust origin: {0}'.format(org_args))
+            pathxy.origin(org_args)
 
         if not output_file:
             output_file = input_file
