@@ -51,9 +51,9 @@ dflt_output_file = 3  # decimal accuracydfl,number of segments
 dflt_rotate = 1  # minimal segment lengthelp  1 #closed path collecting direction
 #*****************************************parser = argparse.ArgumentParser(description='test')
 parser = argparse.ArgumentParser(description='knots modifier')
-parser.add_argument('-i', '--input',
+parser.add_argument('-i', '--input', nargs='+',
                     type=str, help='input filename')
-parser.add_argument('-o', '--output',
+parser.add_argument('-o', '--output', nargs='+',
                     type=str, help='output filename')
 parser.add_argument('-s', '--scale', nargs='+', type=float, help='scale')
 parser.add_argument('-r', '--rotate', nargs='+', type=float, help='rotate')
@@ -99,6 +99,6 @@ for input_file in input_file_list:
         if not output_file:
             output_file = input_file
 
-        write_data(output_file, pathxy.data, msg=True)
+        write_data(output_file[0], pathxy.data, msg=True)
 
     output_file=[]
