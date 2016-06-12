@@ -29,7 +29,7 @@ class path_points:
 
     def __init__(self, data):
         self.data = data
-    @classmethod
+
     def rotate(self, rt):
         rc_x, rc_y, angl_deg = rt
         angl_rad = np.deg2rad(angl_deg)
@@ -79,7 +79,6 @@ parser.add_argument('-t', '--translate', nargs='+',
 parser.add_argument('-org', '--origin', nargs='+',
                     type=str, help='adjust origin params (max 2 args): maxX|minX|maxY|minY|symX|symY')
 args = parser.parse_args()
-
 
 input_file_list = args.input
 output_file = args.output
