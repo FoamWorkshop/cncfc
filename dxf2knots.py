@@ -371,17 +371,18 @@ else:
 
             if len(IO_knot) != 1 or len(master_knot) != 1 or IO_knot[0] == None or master_knot[0] == None:
                 print('{0:^20}|'.format('SKIPPED'))
-                # for var in IO_knot:
-                #     print("IO knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
-                #
-                # for var in master_knot:
-                #     print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
-                #
+
+                for var in IO_knot:
+                    print("IO knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
+
+                for var in master_knot:
+                    print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
+
                 # for var in knots_rank:
                 #     print("knots rank: {0}".format(var))
-                #
-                # var =10
-                # print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
+
+                var =10
+                print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
 
             else:
 
@@ -397,17 +398,18 @@ else:
                 print('{0:3}: {1:4d}|'.format('ct', len(ct_path)))
 
 #{{{
-                i_file_name = '{0}_{1}{2}.{3}'.format(
+                i_file_name = '{1}{2}.{3}'.format(
                     case_name[0], layer_name, '1', 'knt')
                 knots2file(i_file_name, io_path, sorted_knots)
 #                print('i_path saved to: {0}'.format(i_file_name))
 
-                o_file_name = '{0}_{1}{2}.{3}'.format(
+                o_file_name = '{1}{2}.{3}'.format(
                     case_name[0], layer_name, '3', 'knt')
                 knots2file(o_file_name, [var[::-1]
                                          for var in io_path[::-1]], sorted_knots)
 #                print('o_path saved to: {0}'.format(o_file_name))
 
-                ct_file_name = '{0}_{1}{2}.{3}'.format(
+                ct_file_name = '{1}{2}.{3}'.format(
                     case_name[0], layer_name, '2', 'knt')
+
                 knots2file(ct_file_name, ct_path, sorted_knots)
