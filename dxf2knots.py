@@ -290,7 +290,7 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 dflt_dxf_list = 'all'  # decimal accuracy
 dflt_dec_acc = 4  # decimal accuracy
 dflt_n_arc = 10  # number of segments
-dflt_l_arc = 0.1  # minimal segment length
+dflt_l_arc = 0.2  # minimal segment length
 dflt_path_dir = 1  # closed path collecting direction
 #*********************************************************************PROGRAM
 
@@ -348,10 +348,11 @@ else:
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = dxf.layers
 
-        for dxf_layers_member in dxf_layers:
-            layer_name = dxf_layers_member.name
+        layer_name_list = [var.name for var in dxf_layers if not '~' in var.name]
+        # for dxf_layers_member in sorted():
+        for layer_name in sorted(layer_name_list):
             knots_list, elements_list, shape_count = dxf_read(
-                dxf, dxf_layers_member.name, dec_acc, n_arc, l_arc)
+                dxf, layer_name, dec_acc, n_arc, l_arc)
             sorted_knots = knots_dict(knots_list)
             el_kt_list = elements_coords2knots(elements_list, sorted_knots)
          #   print_list(el_kt_list, ' el kt list ')
