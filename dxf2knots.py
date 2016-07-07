@@ -85,8 +85,7 @@ def knots_rank_list(el_kt_list, sorted_knots, skip_knot):
         if var[0] == skip_knot:
             knots_rank.append([var[0], None])
         else:
-            knots_rank.append(
-                [var[0], [x for a in el_kt_list for x in a].count(var[0])])
+            knots_rank.append([var[0], [x for a in el_kt_list for x in a].count(var[0])])
     return knots_rank
 
 
@@ -287,10 +286,10 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 
 
 #*********************************************************************DEFAULT PARAMETERS
-dflt_dxf_list = 'all'  # decimal accuracy
+dflt_dxf_list = 'all'
 dflt_dec_acc = 4  # decimal accuracy
 dflt_n_arc = 10  # number of segments
-dflt_l_arc = 0.2  # minimal segment length
+dflt_l_arc = 0.1  # minimal segment length
 dflt_path_dir = 1  # closed path collecting direction
 #*********************************************************************PROGRAM
 
@@ -348,7 +347,7 @@ else:
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = dxf.layers
 
-        layer_name_list = [var.name for var in dxf_layers if not '~' in var.name]
+        layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
         # for dxf_layers_member in sorted():
         for layer_name in sorted(layer_name_list):
             knots_list, elements_list, shape_count = dxf_read(
