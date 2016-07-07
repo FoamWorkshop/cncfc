@@ -173,6 +173,8 @@ def find_path(crit, el_kt_list, sorted_knots, excl_knot):
     sect_length = int(2 * buff_length / bar_length)
     counter = 0
     knots_rank = knots_rank_list(el_kt_list, sorted_knots, excl_knot)
+    # for var in knots_rank:
+    #     print var
     val_max = max(knots_rank, key=lambda tup: tup[1])[1]
 #    print('number of elements: {0}'.format(buff_length))
 #    print('0|{0}|100%'.format('-'*bar_length))
@@ -249,9 +251,10 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
                 line_count += 1
                 p1 = tuple(round(x, tol) for x in shape.start)
                 p2 = tuple(round(x, tol) for x in shape.end)
-                knots_list.append(p1)
-                knots_list.append(p2)
-                elements_list.append([p1, p2])
+                if p1!=p2:
+                    knots_list.append(p1)
+                    knots_list.append(p2)
+                    elements_list.append([p1, p2])
 
             if shape.dxftype == 'ARC':
                 arc_count += 1
@@ -292,7 +295,6 @@ dflt_n_arc = 10  # number of segments
 dflt_l_arc = 0.1  # minimal segment length
 dflt_path_dir = 1  # closed path collecting direction
 #*********************************************************************PROGRAM
-
 parser = argparse.ArgumentParser(description='test')
 parser.add_argument('-i', '--input', nargs='+', help='input filenames')
 parser.add_argument('-a', '--accuracy', type=int,
@@ -320,7 +322,6 @@ if dxf_list:
     files_dxf = [i for i in dxf_files if i in dxf_list]
 else:
     files_dxf = dxf_files
-
 
 if not files_dxf:
     print 'dir does not include dxf files'
@@ -378,16 +379,14 @@ else:
                 for var in master_knot:
                     print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
 
-                # for var in knots_rank:
-                #     print("knots rank: {0}".format(var))
-
                 var =10
                 print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
 
             else:
 
-                io_path = find_path(
-                    2, el_kt_list, sorted_knots, None)  # IO path
+
+                io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
+
                 print('{0:3}: {1:4d}|'.format('i/o', len(io_path))),
 
                 last_el, excl_knot = find_l_el(
