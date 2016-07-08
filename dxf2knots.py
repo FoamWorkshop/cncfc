@@ -180,6 +180,7 @@ def find_path(crit, el_kt_list, sorted_knots, excl_knot):
 #    print('0|{0}|100%'.format('-'*bar_length))
 #    print ' |',
     while val_max > crit:
+        print 'el_kt_len: ', len(el_kt_list)
         knots_rank = knots_rank_list(el_kt_list, sorted_knots, excl_knot)
         curr_knot = knots_rank_find(knots_rank, 1)
         val_max = max(knots_rank, key=lambda tup: tup[1])[1]
@@ -241,6 +242,8 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
     tol = dec_acc
     knots_list = []
     elements_list = []
+    hrd_knots_list=[]
+    hrd_element_list=[]
     line_count = 0
     arc_count = 0
 #    list_entities(dxf)
@@ -285,7 +288,21 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 
                 knots_list.extend(ARC_knots_list)
 
-    return (knots_list, elements_list, [line_count, arc_count])
+    print 'remove duplicates'
+    print 'number of segments: ', len(elements_list)
+    #hrd_knots_list.append(knots_list[0])
+    hrd_element_list.append(elements_list[0])
+
+    for i, var in enumerate(elements_list):
+        print i
+        print 'hrd len: ', len(hrd_element_list)
+
+        tmp=[var for hrd_var in hrd_element_list if (var[0] in hrd_var) and (var[1] in hrd_var)]
+        if  not len(tmp):
+            hrd_element_list.append(var)
+
+    print 'removed elemts: ', len(elements_list)-len(hrd_element_list)
+    return (knots_list, hrd_element_list, [line_count, arc_count])
 
 
 #*********************************************************************DEFAULT PARAMETERS
@@ -353,6 +370,8 @@ else:
         for layer_name in sorted(layer_name_list):
             knots_list, elements_list, shape_count = dxf_read(
                 dxf, layer_name, dec_acc, n_arc, l_arc)
+            print 'dxf loaded'
+
             sorted_knots = knots_dict(knots_list)
             el_kt_list = elements_coords2knots(elements_list, sorted_knots)
          #   print_list(el_kt_list, ' el kt list ')
