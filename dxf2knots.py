@@ -293,10 +293,7 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
     #hrd_knots_list.append(knots_list[0])
     hrd_element_list.append(elements_list[0])
 
-    for i, var in enumerate(elements_list):
-        print i
-        print 'hrd len: ', len(hrd_element_list)
-
+    for var in elements_list:
         tmp=[var for hrd_var in hrd_element_list if (var[0] in hrd_var) and (var[1] in hrd_var)]
         if  not len(tmp):
             hrd_element_list.append(var)
