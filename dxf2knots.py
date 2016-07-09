@@ -101,10 +101,10 @@ def knots2file(name, io_path, sorted_knots):
 
     for var in io_path:
         coord = knot2coord(sorted_knots, var[0])
-        f.write('{0:.2f} {1:.2f}\n'.format(coord[0], coord[1]))
+        f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
 
     coord = knot2coord(sorted_knots, io_path[-1][1])
-    f.write('{0:.2f} {1:.2f}\n'.format(coord[0], coord[1]))
+    f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
 
     f.close()
 
@@ -168,39 +168,35 @@ def paths_summary(io_path, ct_path):
 
 def find_path(crit, el_kt_list, sorted_knots, excl_knot):
     path = []
-    bar_length = 50
-    buff_length = len(el_kt_list)
-    sect_length = int(2 * buff_length / bar_length)
-    counter = 0
-    knots_rank = knots_rank_list(el_kt_list, sorted_knots, excl_knot)
-    # for var in knots_rank:
-    #     print var
-    val_max = max(knots_rank, key=lambda tup: tup[1])[1]
-#    print('number of elements: {0}'.format(buff_length))
-#    print('0|{0}|100%'.format('-'*bar_length))
-#    print ' |',
-    while val_max > crit:
-        print 'el_kt_len: ', len(el_kt_list)
-        knots_rank = knots_rank_list(el_kt_list, sorted_knots, excl_knot)
-        curr_knot = knots_rank_find(knots_rank, 1)
-        val_max = max(knots_rank, key=lambda tup: tup[1])[1]
-        for element in el_kt_list:
-            if curr_knot[0] in element:
-                counter += 1
-         #       print 'found element', element, 'val max', val_max
-                if element[0] == curr_knot[0]:
-                    path.append(element)
-                if element[1] == curr_knot[0]:
-                    path.append(element[::-1])
 
-                el_kt_list.remove(element)
-                break
-            if counter > sect_length:
-             #               print'+',
-                counter = 0
- #   print '+|DONE\n'
+    knots_rank = knots_rank_list(el_kt_list, sorted_knots, excl_knot)
+
+    curr_knot = knots_rank_find(knots_rank, 1)
+    last_knot = knots_rank_find(knots_rank, 3)
+
+    curr_element=[]
+
+    while not ((curr_element is None) or curr_knot[0]==last_knot[0]):
+        print 'el_kt_len: ', len(el_kt_list)
+
+        curr_element=next((element for element in el_kt_list if curr_knot[0] in element), None)
+        # print 'curr_element', curr_element
+        # print 'current knot', curr_knot
+        # print 'last_knot knot', last_knot
+        if not (curr_element is None):
+
+            if curr_element[0] == curr_knot[0]:
+                curr_knot=[curr_element[1]]
+                path.append(curr_element)
+            else:
+                curr_knot=[curr_element[0]]
+                path.append(curr_element[::-1])
+
+            el_kt_list.remove(curr_element)
+
     if crit == 1:
         path.append([path[-1][1], path[0][0]])
+
     return path
 
 
@@ -402,7 +398,7 @@ else:
 
 
                 io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
-
+                print io_path
                 print('{0:3}: {1:4d}|'.format('i/o', len(io_path))),
 
                 last_el, excl_knot = find_l_el(
