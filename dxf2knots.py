@@ -176,13 +176,11 @@ def find_path(crit, el_kt_list, sorted_knots, excl_knot):
 
     curr_element=[]
 
+    print '\nfinding path'
     while not ((curr_element is None) or curr_knot[0]==last_knot[0]):
-        print 'el_kt_len: ', len(el_kt_list)
+        print '\rpool size: {0}'.format(len(path)),
 
         curr_element=next((element for element in el_kt_list if curr_knot[0] in element), None)
-        # print 'curr_element', curr_element
-        # print 'current knot', curr_knot
-        # print 'last_knot knot', last_knot
         if not (curr_element is None):
 
             if curr_element[0] == curr_knot[0]:
@@ -196,7 +194,7 @@ def find_path(crit, el_kt_list, sorted_knots, excl_knot):
 
     if crit == 1:
         path.append([path[-1][1], path[0][0]])
-
+    print '\n'
     return path
 
 
@@ -398,7 +396,7 @@ else:
 
 
                 io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
-                print io_path
+
                 print('{0:3}: {1:4d}|'.format('i/o', len(io_path))),
 
                 last_el, excl_knot = find_l_el(
