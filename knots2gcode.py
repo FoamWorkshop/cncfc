@@ -105,7 +105,7 @@ dflt_dec_acc = 3  # decimal accuracy
 dflt_n_arc = 10  # number of segments
 dflt_l_arc = 1  # minimal segment length
 dflt_path_dir = 1  # closed path collecting direction
-d=445
+d=421
 d_rat = 0.5
 symm_pref = 's'
 #*********************************************************************PROGRAM
