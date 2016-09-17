@@ -381,9 +381,8 @@ else:
 
     x_len = interp_len(X, Y)
     x0_len = interp_series(X, x_len, pool_list[0][0])
-
-    unfold_faces_list = [
-        [interp_series(X, x_len, p1[0]) - x0_len, p1[1], 0] for p1 in pool_list]
+    print x0_len
+    unfold_faces_list = [[interp_series(X, x_len, p1[0]) - x0_len, p1[1], 0] for p1 in pool_list] #- x0_len
 
     write_data(output_f, unfold_faces_list, True)
 

@@ -9,6 +9,7 @@ program options:
 -narc [number o segments] - default 10
 -larc [minimal segment length] - default 1
 -cw   [1|0] default 1: 1 - clockwise; 0 - counter clockwise of the  closed path
+-l process selected layers
 
 info:
     the program extracts entities:
@@ -305,6 +306,7 @@ dflt_path_dir = 1  # closed path collecting direction
 #*********************************************************************PROGRAM
 parser = argparse.ArgumentParser(description='test')
 parser.add_argument('-i', '--input', nargs='+', help='input filenames')
+parser.add_argument('-l', '--layer', nargs='+', help='input layers')
 parser.add_argument('-a', '--accuracy', type=int,
                     default=dflt_dec_acc, help='decimal accuracy, default: 3')
 parser.add_argument('-narc', '--arc_seg_num', type=int,
@@ -317,6 +319,7 @@ parser.add_argument('-cw', '--collection_dir', type=int,
 args = parser.parse_args()
 
 dxf_list = args.input
+layer_list = args.layer
 dec_acc = args.accuracy
 n_arc = args.arc_seg_num
 l_arc = args.arc_seg_len
@@ -356,7 +359,7 @@ else:
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = dxf.layers
 
-        layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
+        layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1) and (len(layer_list) and var.name in layer_list)]
         # for dxf_layers_member in sorted():
         for layer_name in sorted(layer_name_list):
             knots_list, elements_list, shape_count = dxf_read(
