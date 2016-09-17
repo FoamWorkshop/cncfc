@@ -359,7 +359,11 @@ else:
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = dxf.layers
 
-        layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1) and (len(layer_list) and var.name in layer_list)]
+        if len(layer_list):
+            layer_name_list= [ var.name for var in dxf_layers if var in layer_list]
+        else:
+            layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
+
         # for dxf_layers_member in sorted():
         for layer_name in sorted(layer_name_list):
             knots_list, elements_list, shape_count = dxf_read(
