@@ -45,7 +45,15 @@ program algorithm:
                 io_path and remining segment pool for the closed path
         7 - find the END segment for clock wise or counter clock wise direction and exclude the last knot from the ranking list.
         8 - find the ct_path
-        9 - save ct_path, io_path and reversed(io_path) to the output files'''
+        9 - save ct_path, io_path and reversed(io_path) to the output files
+
+history:
+6.10.2016 added description to the code,
+
+TODO:
+1. add functionality of start cutting from the smallest slope
+2. better path debugging, log file
+        '''
 
 import os
 import argparse
@@ -304,15 +312,15 @@ dflt_l_arc = 0.1  # minimal segment length
 dflt_path_dir = 1  # closed path collecting direction
 #*********************************************************************PROGRAM
 parser = argparse.ArgumentParser(description='test')
-parser.add_argument('-i', '--input', nargs='+', help='input filenames')
+parser.add_argument('-i', '--input', nargs='+', help='dxf input filename[s], can be used to extract data from multiple dxf files')
 parser.add_argument('-a', '--accuracy', type=int,
-                    default=dflt_dec_acc, help='decimal accuracy, default: 3')
+                    default=dflt_dec_acc, help='set decimal accuracy, default: '+str(dflt_dec_acc))
 parser.add_argument('-narc', '--arc_seg_num', type=int,
-                    default=dflt_n_arc, help='arc segments number, default: 10')
+                    default=dflt_n_arc, help='arc segments number. If the division results in a segment length is shorter than --larc, the number of segments is reduced to meet --larc. If the arc length is shorter than --larc, the arc is replaced by a single segment; default: '+str(dflt_n_arc))
 parser.add_argument('-larc', '--arc_seg_len', type=int,
-                    default=dflt_l_arc, help='minimal arc segment length, default: 1')
+                    default=dflt_l_arc, help='minimal arc segment length, default: '+str(dflt_l_arc))
 parser.add_argument('-cw', '--collection_dir', type=int,
-                    default=dflt_path_dir, help='closed path collection dir')
+                    default=dflt_path_dir, help='path collection dir, clockwise=1; counter clockwise=-1, default: '+str(dflt_path_dir))
 
 args = parser.parse_args()
 
@@ -322,19 +330,23 @@ n_arc = args.arc_seg_num
 l_arc = args.arc_seg_len
 path_dir = args.collection_dir
 
-dir_path = os.getcwd()
-dxf_files = [i for i in os.listdir(dir_path) if i.endswith('.dxf')]
-
+#1---in order to avoid IO errors, check if the input files are in the work folder
 if dxf_list:
-    print dxf_files
-    files_dxf = [i for i in dxf_files if i in dxf_list]
-else:
-    files_dxf = dxf_files
+    dir_path = os.getcwd()
+    dir_dxf_files = [var for var in os.listdir(dir_path) if var.endswith('.dxf')]
+    for var in dxf_list:
+
+        if var in dir_dxf_files:
+            print "found: %s".format(var)
+            files_dxf.append(var)
+
+        else:
+            print "not found: %s".format(var)
 
 if not files_dxf:
-    print 'dir does not include dxf files'
+    print 'dir does not include specified dxf files'
+#1---end
 
-# else, execute the program
 else:
 
     print('SETTINGS:')
@@ -350,13 +362,17 @@ else:
         'file', 'layer', 'lines', 'arcs', '1 -knt', '2 -knt', '3 -knt', 'status'))
     print('{0}'.format('-' * 80))
 #}}}print table header
+
+
+
     for i, files_dxf_member in enumerate(files_dxf):
 
         case_name = os.path.splitext(files_dxf_member)
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = dxf.layers
-
+        #skip layer names which beggin with ~
         layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
+
         # for dxf_layers_member in sorted():
         for layer_name in sorted(layer_name_list):
             knots_list, elements_list, shape_count = dxf_read(
@@ -379,7 +395,7 @@ else:
                                                                       [x[1] for x in knots_rank].count(
                                                                           2),
                                                                       [x[1] for x in knots_rank].count(3), ' ')),
-
+#---debug
             if len(IO_knot) != 1 or len(master_knot) != 1 or IO_knot[0] == None or master_knot[0] == None:
                 print('{0:^20}|'.format('SKIPPED'))
 
@@ -391,10 +407,10 @@ else:
 
                 var =10
                 print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
-
+#
             else:
 
-
+#---find paths
                 io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
 
                 print('{0:3}: {1:4d}|'.format('i/o', len(io_path))),
@@ -405,8 +421,9 @@ else:
                 ct_path = find_path(
                     1, el_kt_list, sorted_knots, excl_knot[0])  # loop path
                 print('{0:3}: {1:4d}|'.format('ct', len(ct_path)))
+#---END
 
-#{{{
+#---save paths to files
                 i_file_name = '{1}{2}.{3}'.format(
                     case_name[0], layer_name, '1', 'knt')
                 knots2file(i_file_name, io_path, sorted_knots)
@@ -422,3 +439,5 @@ else:
                     case_name[0], layer_name, '2', 'knt')
 
                 knots2file(ct_file_name, ct_path, sorted_knots)
+#---END
+print 'end of the program'
