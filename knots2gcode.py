@@ -48,7 +48,7 @@ def knots2gcode(ct_pathxy, ct_pathuv, name='gcode', global_header='False', subse
     ##############################################
         f.write("\n(-----CT PATH-from: {0}-----)\n".format(name))
         for varxy, varuv in zip(ct_pathxy, ct_pathuv):
-            f.write('G1 X{0:8.1f} Y{1:8.1f} U{2:8.1f} V{3:8.1f}\n'.format(
+            f.write('G1 X{0:8.3f} Y{1:8.3f} U{2:8.3f} V{3:8.3f}\n'.format(
                 varxy[0], varxy[1], varuv[0], varuv[1]))
     ##############################################
         if subset_header:
@@ -86,7 +86,7 @@ def gcodexyuv(dataxy, datauv):
         print "data ok"
         tmp=[]
         for i in range(len(dataxy)):
-            tmp.append('g1 x{0:6.2f} y{1:6.2f} u{2:6.2f} v{3:6.2f}'.format(dataxy[i][0], dataxy[i][1], datauv[i][0], datauv[i][1]))
+            tmp.append('g1 x{0:6.3f} y{1:6.3f} u{2:6.3f} v{3:6.3f}'.format(dataxy[i][0], dataxy[i][1], datauv[i][0], datauv[i][1]))
 
         fgcode=open('test.ngc','w')
         for line in tmp:
@@ -105,7 +105,7 @@ dflt_dec_acc = 3  # decimal accuracy
 dflt_n_arc = 10  # number of segments
 dflt_l_arc = 1  # minimal segment length
 dflt_path_dir = 1  # closed path collecting direction
-d=445
+d=421
 d_rat = 0.5
 symm_pref = 's'
 #*********************************************************************PROGRAM
