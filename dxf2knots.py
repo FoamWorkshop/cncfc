@@ -360,7 +360,7 @@ else:
         dxf_layers = dxf.layers
 
         if len(layer_list):
-            layer_name_list= [ var.name for var in dxf_layers if var in layer_list]
+            layer_name_list= [ var.name for var in dxf_layers if var.name in layer_list]
         else:
             layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
 

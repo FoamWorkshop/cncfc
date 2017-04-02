@@ -12,11 +12,17 @@ def read_data(f_name, msg='False'):
             for line in f:
                 tmp = line.split()
                 x, y, z = 0, 0, 0
-                if len(tmp) == 2:
+
+                if len(tmp) == 1:
+                    x = tmp[0]
+                    y = 0
+                    z = 0
+                elif len(tmp) == 2:
                     x, y = tmp
                     z = 0
-                if len(tmp) == 3:
+                elif len(tmp) == 3:
                     x, y, z = tmp
+
                 data.append([float(x), float(y), float(z)])
         if msg:
             print("{0:<24} -> {1} knots".format(f_name, len(data)))
@@ -31,19 +37,19 @@ def read_data(f_name, msg='False'):
 def write_data(f_name, data, msg='False'):
     i = 0
     print 'assigned file name', f_name
-    if os.path.isfile(f_name):
-
-        bak_f_name = f_name + '.00.bak'
-
-        while os.path.isfile(bak_f_name):
-            bak_f_name = '{0}.{1:{fill}>2s}.bak'.format(
-                f_name, str(i), fill='0')
-            i += 1
-
-        os.rename(f_name, bak_f_name)
-
-        if msg:
-            print("{0:<24} -> {1}".format(f_name, bak_f_name))
+    # if os.path.isfile(f_name):
+    #
+    #     bak_f_name = f_name + '.00.bak'
+    #
+    #     while os.path.isfile(bak_f_name):
+    #         bak_f_name = '{0}.{1:{fill}>2s}.bak'.format(
+    #             f_name, str(i), fill='0')
+    #         i += 1
+    #
+    #     os.rename(f_name, bak_f_name)
+    #
+    #     if msg:
+    #         print("{0:<24} -> {1}".format(f_name, bak_f_name))
 
     with open(f_name, 'w') as f:
         for line in data:
