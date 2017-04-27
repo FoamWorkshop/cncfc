@@ -32,7 +32,7 @@ def sub_points(p1, p2):
     return len(p1) * [None]
 
 
-def knots2gcode(ct_pathxy, ct_pathuv, name='gcode', global_header='False', subset_header='False'):
+def knots2gcode(ct_pathxy, ct_pathuv, ct_path_r, name='gcode', global_header='False', subset_header='False'):
     f_name = name + '.ngc'
     with open(f_name, 'w') as f:
         if subset_header:
@@ -47,9 +47,15 @@ def knots2gcode(ct_pathxy, ct_pathuv, name='gcode', global_header='False', subse
             f.write("F200 (Feed rate)\n")
     ##############################################
         f.write("\n(-----CT PATH-from: {0}-----)\n".format(name))
-        for varxy, varuv in zip(ct_pathxy, ct_pathuv):
-            f.write('G1 X{0:8.3f} Y{1:8.3f} U{2:8.3f} V{3:8.3f}\n'.format(
-                varxy[0], varxy[1], varuv[0], varuv[1]))
+        if ct_path_r:
+            f.write('G1 B{0:8.3f}\n'.format(ct_path_r[0][0]))
+            for varxy, varuv, var_r in zip(ct_pathxy, ct_pathuv, ct_path_r):
+                f.write('G1 X{0:8.3f} Y{1:8.3f} U{2:8.3f} V{3:8.3f} B{4:8.3f}\n'.format(
+                    varxy[0], varxy[1], varuv[0], varuv[1], var_r[0]))
+        else:
+            for varxy, varuv in zip(ct_pathxy, ct_pathuv):
+                f.write('G1 X{0:8.3f} Y{1:8.3f} U{2:8.3f} V{3:8.3f}\n'.format(
+                    varxy[0], varxy[1], varuv[0], varuv[1]))
     ##############################################
         if subset_header:
             f.write("\no<{0}> endsub\n".format(name))
@@ -110,8 +116,12 @@ d_rat = 0.5
 symm_pref = 's'
 #*********************************************************************PROGRAM
 knt_data = []
+knt_list_r = []
+knt_data_r = []
+
 parser = argparse.ArgumentParser(description='test')
-parser.add_argument('-i', '--input', nargs='+',type=str, help='input filenames')
+parser.add_argument('-i',  '--input', nargs='+',type=str, help='xy uv input filenames')
+parser.add_argument('-ir', '--input_r', nargs='+',type=str, help='R input filename')
 parser.add_argument('-o', '--output', type=str, help='input filenames')
 parser.add_argument('-sh', '--subset_header', action='store_true')
 parser.add_argument('-gh', '--global_header', action='store_true')
@@ -123,6 +133,8 @@ parser.add_argument('-symm', '--symmetry', action='store_true')
 args = parser.parse_args()
 
 knt_list = args.input
+knt_list_r = args.input_r
+
 
 subset_header = args.subset_header
 global_header = args.global_header
@@ -133,6 +145,11 @@ symm_stat = args.symmetry
 d = args.distance
 d_rat = args.distance_ratio
 
+
+
+if knt_list_r:
+    knt_set_r = knt_list_r[0]
+    knt_data_r = read_data(knt_set_r, False)
 
 if len(knt_list)==1:
     knt_set_xy = knt_list[0]
@@ -149,6 +166,7 @@ if not output_f_name:
 
 knt_data_xy = read_data(knt_set_xy, False)
 knt_data_uv = read_data(knt_set_uv, False)
+
 
 if len(knt_set_xy)!=len(knt_set_uv):
     print('knots: {0} - {1} are not balanced. EXIT'.format(knt_set_xy, knt_set_uv))
@@ -172,7 +190,7 @@ else:
     write_data('{0}_{1}.knt'.format('xy',output_f_name),mashpathxy,True)
     write_data('{0}_{1}.knt'.format('uv',output_f_name),mashpathuv,True)
 
-    knots2gcode(mashpathxy, mashpathuv, output_f_name, global_header, subset_header)
+    knots2gcode(mashpathxy, mashpathuv,knt_data_r, output_f_name, global_header, subset_header)
 
     if symm_stat:
-        knots2gcode(mashpathuv, mashpathxy, ''.join([symm_pref, output_f_name]), global_header, subset_header)
+        knots2gcode(mashpathuv, mashpathxy,knt_data_r, ''.join([symm_pref, output_f_name]), global_header, subset_header)
