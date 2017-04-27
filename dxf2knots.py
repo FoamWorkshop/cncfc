@@ -360,7 +360,11 @@ else:
         dxf_layers = dxf.layers
 
         if len(layer_list):
+<<<<<<< HEAD
             layer_name_list= [ var.name for var in dxf_layers if var in layer_list]
+=======
+            layer_name_list= [ var.name for var in dxf_layers if var.name in layer_list]
+>>>>>>> f979f5e... added loft cut
         else:
             layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
 
