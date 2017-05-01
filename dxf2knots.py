@@ -241,10 +241,12 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
     hrd_element_list=[]
     line_count = 0
     arc_count = 0
+    path_offset =[0,0,0]
 #    list_entities(dxf)
 
     for shape in dxf.entities:
         if shape.layer == layer_name:
+
             if shape.dxftype == 'LINE':
                 line_count += 1
                 p1 = tuple(round(x, tol) for x in shape.start)
@@ -254,6 +256,11 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
                     knots_list.append(p2)
                     elements_list.append([p1, p2])
 
+            if shape.dxftype == 'MTEXT':
+                if shape.raw_text == 'coord_0':
+                    print('path offset: {}'.format(shape.insert))
+                    path_offset = tuple(round(x, tol) for x in shape.insert)
+
             if shape.dxftype == 'ARC':
                 arc_count += 1
                 ARC_knots_list = []
@@ -261,8 +268,8 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
                 min_len = l_arc
                 O = shape.center
                 R = shape.radius
-                angl_1 = shape.startangle * np.pi / 180
-                angl_2 = shape.endangle * np.pi / 180
+                angl_1 = shape.start_angle * np.pi / 180
+                angl_2 = shape.end_angle * np.pi / 180
 
                 if angl_2 >= angl_1:
                     angl_list = np.linspace(angl_1, angl_2, n)
@@ -294,6 +301,12 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
             hrd_element_list.append(var)
 
     print 'removed elemts: ', len(elements_list)-len(hrd_element_list)
+    # print knots_list
+    knots_list=[(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in knots_list]
+    hrd_element_list=[[(var1[0]-path_offset[0], var1[1]-path_offset[1], var1[2]-path_offset[2]), (var2[0]-path_offset[0], var2[1]-path_offset[1], var2[2]-path_offset[2])]for var1, var2 in hrd_element_list]
+    # print 'after\n\n\n\n'
+    # print knots_list
+    # print hrd_element_list
     return (knots_list, hrd_element_list, [line_count, arc_count])
 
 
@@ -325,20 +338,20 @@ n_arc = args.arc_seg_num
 l_arc = args.arc_seg_len
 path_dir = args.collection_dir
 
-dir_path = os.getcwd()
-dxf_files = [i for i in os.listdir(dir_path) if i.endswith('.dxf')]
-
-if dxf_list:
-    print dxf_files
-    files_dxf = [i for i in dxf_files if i in dxf_list]
-else:
-    files_dxf = dxf_files
-
-if not files_dxf:
-    print 'dir does not include dxf files'
-
+# dir_path = os.getcwd()
+# dxf_files = [i for i in os.listdir(dir_path) if i.endswith('.dxf')]
+#
+# if dxf_list:
+#     print dxf_files
+#     files_dxf = [i for i in dxf_files if i in dxf_list]
+# else:
+#     files_dxf = dxf_files
+#
+# if not files_dxf:
+#     print 'dir does not include dxf files'
+files_dxf = dxf_list
 # else, execute the program
-else:
+if 1:
 
     print('SETTINGS:')
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'decimal accuracy', dec_acc))
@@ -358,14 +371,17 @@ else:
         case_name = os.path.splitext(files_dxf_member)
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = dxf.layers
+        # for var in dxf_layers:
+        #     print var.name
+        #
+        # print layer_list
 
-        if len(layer_list):
-            layer_name_list= [ var.name for var in dxf_layers if var.name in layer_list]
-        else:
-            layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
+
+        layer_name_list= [ var.name for var in dxf_layers if layer_list[0] in var.name]
 
         # for dxf_layers_member in sorted():
         for layer_name in sorted(layer_name_list):
+            print('layer name: {}'.format(layer_name))
             knots_list, elements_list, shape_count = dxf_read(
                 dxf, layer_name, dec_acc, n_arc, l_arc)
             print 'dxf loaded'

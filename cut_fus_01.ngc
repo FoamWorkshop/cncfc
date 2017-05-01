@@ -1,0 +1,11 @@
+(lofted profiles cut test 1)
+G21 G90
+
+F200
+G0 B0
+
+G0 X60 Y-5 U60 V-5
+o<fus_01*> call
+G0 X50 U50
+G0 X60 U60
+M2
