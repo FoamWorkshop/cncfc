@@ -212,8 +212,8 @@ def interp_points(seg_P1_X_list, seg_P1_Y_list, seg_O_X_list, seg_O_Y_list, C_Z,
     cut_in_swing = True
     for i in range(n_spokes):
 
-        f_name_C_r1='0_{0}_xyuv_{1:{fill}{align}4}.knt'.format(layer_list,i,fill='0',align='>')
-        f_name_C_a1='0_{0}_b_{1:{fill}{align}4}.knt'.format(layer_list,i,fill='0',align='>')
+        f_name_C_r1='{0}_xyuv_{1:{fill}{align}4}.knt'.format(layer_list,i,fill='0',align='>')
+        f_name_C_a1='{0}_b_{1:{fill}{align}4}.knt'.format(layer_list,i,fill='0',align='>')
 
         if cut_in_swing and i%2:
             coords2file(f_name_C_r1, np.flipud(C_r[:,i]), np.flipud(yv))
@@ -224,6 +224,7 @@ def interp_points(seg_P1_X_list, seg_P1_Y_list, seg_O_X_list, seg_O_Y_list, C_Z,
 
 
 def interp_points_fc(seg_P1_X_list, seg_P1_Y_list, C_Z, n_sect, interp_meth, name):
+    print('generate freecad file')
     n_spokes = len(seg_P1_X_list[0])
     print(n_spokes)
 
@@ -387,10 +388,10 @@ dxf_files = [i for i in os.listdir(dir_path) if i.endswith('.dxf')]
 print(dxf_list)
 if not dxf_list:
     print('the input file is not specified, use: -i "file name"')
-elif not (dxf_list in dxf_files):
-    print('the current dir does not include requested dxf files')
-elif not layer_list:
-    print('the profile prefix is not specified, use: -l "profile prefix"')
+# elif not (dxf_list in dxf_files):
+#     print('the current dir does not include requested dxf files')
+# elif not layer_list:
+#     print('the profile prefix is not specified, use: -l "profile prefix"')
 
 
 
@@ -481,7 +482,7 @@ else:
             # print(np.vstack(seg_P1_X_list))
             # print(np.vstack(seg_P1_Y_list))
 
-            # interp_points(seg_P1_X_list, seg_P1_Y_list , seg_O_X_list, seg_O_Y_list, C_Z, n_sect, interp_meth,files_dxf_member,layer_list)
+            interp_points(seg_P1_X_list, seg_P1_Y_list , seg_O_X_list, seg_O_Y_list, C_Z, n_sect, interp_meth,files_dxf_member,layer_list)
 
             interp_points_fc(seg_P1_X_list, seg_P1_Y_list, C_Z, n_sect, interp_meth,files_dxf_member)
             # C_a1=np.vstack(C_a_list)
