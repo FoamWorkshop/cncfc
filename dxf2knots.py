@@ -258,8 +258,9 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 
             if shape.dxftype == 'MTEXT':
                 if shape.raw_text == 'coord_0':
-                    print('path offset: {}'.format(shape.insert))
+                    # print('path offset: {}'.format(shape.insert))
                     path_offset = tuple(round(x, tol) for x in shape.insert)
+                    print('path offset: {}'.format(path_offset))
 
             if shape.dxftype == 'ARC':
                 arc_count += 1
@@ -302,6 +303,7 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 
     print 'removed elemts: ', len(elements_list)-len(hrd_element_list)
     # print knots_list
+
     knots_list=[(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in knots_list]
     hrd_element_list=[[(var1[0]-path_offset[0], var1[1]-path_offset[1], var1[2]-path_offset[2]), (var2[0]-path_offset[0], var2[1]-path_offset[1], var2[2]-path_offset[2])]for var1, var2 in hrd_element_list]
     # print 'after\n\n\n\n'
