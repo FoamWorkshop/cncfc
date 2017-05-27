@@ -109,6 +109,18 @@ def knots2file(name, io_path, sorted_knots):
 
     f.close()
 
+def knots2file_1(name, section_list):
+    f = open(name, 'w')
+    # print('TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTt')
+    for var in section_list:
+        # coord = knot2coord(sorted_knots, var[0])
+        # print(var)
+        f.write('{0:.3f} {1:.3f}\n'.format(var[0], var[1]))
+
+    # coord = knot2coord(sorted_knots, io_path[-1][1])
+    # f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
+
+    f.close()
 
 def list_entities(dxf):
     dxf_summary = [shape.dxftype for shape in dxf.entities]
@@ -239,13 +251,20 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
     elements_list = []
     hrd_knots_list=[]
     hrd_element_list=[]
+    segment_bounds=[]
     line_count = 0
     arc_count = 0
+    circle_count = 0
     path_offset =[0,0,0]
 #    list_entities(dxf)
 
     for shape in dxf.entities:
         if shape.layer == layer_name:
+            if shape.dxftype == 'CIRCLE':
+                circle_count += 1
+                p1 = tuple(round(x, tol) for x in shape.center)
+                segment_bounds.append(p1)
+                # print(circle_count, p1)
 
             if shape.dxftype == 'LINE':
                 line_count += 1
@@ -302,14 +321,11 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
             hrd_element_list.append(var)
 
     print 'removed elemts: ', len(elements_list)-len(hrd_element_list)
-    # print knots_list
 
     knots_list=[(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in knots_list]
     hrd_element_list=[[(var1[0]-path_offset[0], var1[1]-path_offset[1], var1[2]-path_offset[2]), (var2[0]-path_offset[0], var2[1]-path_offset[1], var2[2]-path_offset[2])]for var1, var2 in hrd_element_list]
-    # print 'after\n\n\n\n'
-    # print knots_list
-    # print hrd_element_list
-    return (knots_list, hrd_element_list, [line_count, arc_count])
+
+    return (knots_list, hrd_element_list, segment_bounds, [line_count, arc_count])
 
 
 #*********************************************************************DEFAULT PARAMETERS
@@ -330,6 +346,11 @@ parser.add_argument('-larc', '--arc_seg_len', type=int,
                     default=dflt_l_arc, help='minimal arc segment length, default: 1')
 parser.add_argument('-cw', '--collection_dir', type=int,
                     default=dflt_path_dir, help='closed path collection dir')
+parser.add_argument('-eq', '--equivalence_knots', type=int,
+                    default=False, help='equivalence knots sections to specified number')
+
+parser.add_argument('-eq_skip', '--skip_eq_sections', nargs='+', type=int,
+                    default=[], help='equivalence knots sections to specified number')
 
 args = parser.parse_args()
 
@@ -339,40 +360,32 @@ dec_acc = args.accuracy
 n_arc = args.arc_seg_num
 l_arc = args.arc_seg_len
 path_dir = args.collection_dir
+eq_sect = args.equivalence_knots
+eq_sect_skip = args.skip_eq_sections
 
-# dir_path = os.getcwd()
-# dxf_files = [i for i in os.listdir(dir_path) if i.endswith('.dxf')]
-#
-# if dxf_list:
-#     print dxf_files
-#     files_dxf = [i for i in dxf_files if i in dxf_list]
-# else:
-#     files_dxf = dxf_files
-#
-# if not files_dxf:
-#     print 'dir does not include dxf files'
 files_dxf = dxf_list
-# else, execute the program
+
 if 1:
 
     print('SETTINGS:')
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'decimal accuracy', dec_acc))
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'arc segments count', n_arc))
-    print('{0}{1:<30}: {2}'.format(
-        ' ' * 10, 'minimal arc segment length', l_arc))
-    print('{0}{1:<30}: {2}'.format(
-        ' ' * 10, 'closed path collection dir', path_dir))
+    print('{0}{1:<30}: {2}'.format(' ' * 10, 'minimal arc segment length', l_arc))
+    print('{0}{1:<30}: {2}'.format(' ' * 10, 'equivalence sections', eq_sect))
+    print('{0}{1:<30}: {2}'.format(' ' * 10, 'skip equivalence sections', eq_sect_skip))
+    print('{0}{1:<30}: {2}'.format(' ' * 10, 'closed path collection dir', path_dir))
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'files', files_dxf))
-#{{{print table header
+
     print('\n\n{0:6}|{1:6}|{2:6}|{3:6}|{4:6}|{5:6}|{6:6}|{7:^20}'.format(
         'file', 'layer', 'lines', 'arcs', '1 -knt', '2 -knt', '3 -knt', 'status'))
     print('{0}'.format('-' * 80))
-#}}}print table header
+
     for i, files_dxf_member in enumerate(files_dxf):
 
         case_name = os.path.splitext(files_dxf_member)
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = dxf.layers
+<<<<<<< HEAD
         # for var in dxf_layers:
         #     print var.name
         #
@@ -389,20 +402,18 @@ if 1:
             layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
 =======
 
+=======
+>>>>>>> 9d1cd0a... added option eq, eq_skip working eqbalance sections
         layer_name_list= [ var.name for var in dxf_layers if layer_list[0] in var.name]
 >>>>>>> ad63914... added coord_0 text as a ref coordinate system
 
-        # for dxf_layers_member in sorted():
         for layer_name in sorted(layer_name_list):
             print('layer name: {}'.format(layer_name))
-            knots_list, elements_list, shape_count = dxf_read(
-                dxf, layer_name, dec_acc, n_arc, l_arc)
+            knots_list, elements_list, segment_bounds, shape_count = dxf_read(dxf, layer_name, dec_acc, n_arc, l_arc)
             print 'dxf loaded'
 
             sorted_knots = knots_dict(knots_list)
             el_kt_list = elements_coords2knots(elements_list, sorted_knots)
-         #   print_list(el_kt_list, ' el kt list ')
-         #   print_list(sorted_knots,' sorted knots')
             knots_rank = knots_rank_list(el_kt_list, sorted_knots, None)
             master_knot = knots_rank_find(knots_rank, 3)
             IO_knot = knots_rank_find(knots_rank, 1)
@@ -418,41 +429,69 @@ if 1:
 
             if len(IO_knot) != 1 or len(master_knot) != 1 or IO_knot[0] == None or master_knot[0] == None:
                 print('{0:^20}|'.format('SKIPPED'))
-
                 for var in IO_knot:
                     print("IO knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
-
                 for var in master_knot:
                     print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
-
                 var =10
                 print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
 
             else:
 
-
                 io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
-
                 print('{0:3}: {1:4d}|'.format('i/o', len(io_path))),
-
-                last_el, excl_knot = find_l_el(
-                    path_dir, el_kt_list, sorted_knots, master_knot[0])
-
-                ct_path = find_path(
-                    1, el_kt_list, sorted_knots, excl_knot[0])  # loop path
+                last_el, excl_knot = find_l_el(path_dir, el_kt_list, sorted_knots, master_knot[0])
+                ct_path = find_path(1, el_kt_list, sorted_knots, excl_knot[0])  # loop path
                 print('{0:3}: {1:4d}|'.format('ct', len(ct_path)))
 
-#{{{
-                i_file_name = '{1}{2}.{3}'.format(
-                    case_name[0], layer_name, '1', 'knt')
-                knots2file(i_file_name, io_path, sorted_knots)
-#                print('i_path saved to: {0}'.format(i_file_name))
 
-                o_file_name = '{1}{2}.{3}'.format(
-                    case_name[0], layer_name, '3', 'knt')
-                knots2file(o_file_name, [var[::-1]
-                                         for var in io_path[::-1]], sorted_knots)
-#                print('o_path saved to: {0}'.format(o_file_name))
+                io_knots_coord = [knot2coord(sorted_knots,var[0]) for var in io_path]
+                io_knots_coord.append(knot2coord(sorted_knots,io_path[-1][1]))
+
+#EQUIVALENCE SECTION
+                section_list = io_knots_coord
+                if eq_sect:
+                    section_list = []
+                    section = []
+                    updated_section_list = []
+                    n_seg = np.linspace(0,1,eq_sect)
+                    # print(segment_bounds)
+                    for i, var in enumerate(io_knots_coord):
+                        section.append(var)
+                        if var in segment_bounds:
+                            # print(var)
+                            section_list.append(section)
+                            section = []
+                            section.append(var)
+
+                    for i, section in enumerate(section_list):
+                        if i not in eq_sect_skip:
+                            # print('equivalence section {}'.format(i))
+                            p = np.array(section)
+                            l = np.sqrt(np.diff(p[:,0])**2 + np.diff(p[:,1])**2)
+                            l = np.cumsum(np.hstack((0,l)))
+                            # print(n_seg)
+                            # print(l)
+                            l_norm = l/l[-1]
+                            # print(l_norm)
+                            x=np.interp(n_seg, l_norm, p[:,0])
+                            y=np.interp(n_seg, l_norm, p[:,1])
+                            z=np.vstack((x,y)).T
+                            # print(z)
+                            section = z.tolist()
+                        updated_section_list.append(section)
+                    section_list = [var for sublist in updated_section_list for var in sublist]
+#EQUIVALENCE SECTION
+
+                i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
+                knots2file_1(i_file_name, section_list)
+                # knots2file(i_file_name, io_path, sorted_knots)
+
+                o_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '3', 'knt')
+                knots2file_1(o_file_name, section_list[::-1])
+                # knots2file(o_file_name, [var[::-1]
+                #                          for var in io_path[::-1]], sorted_knots)
+
 
                 ct_file_name = '{1}{2}.{3}'.format(
                     case_name[0], layer_name, '2', 'knt')
