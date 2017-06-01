@@ -189,9 +189,9 @@ def find_path(crit, el_kt_list, sorted_knots, excl_knot):
 
     curr_element=[]
 
-    print '\nfinding path'
+    # print '\nfinding path'
     while not ((curr_element is None) or curr_knot[0]==last_knot[0]):
-        print '\rpool size: {0}'.format(len(path)),
+        # print '\rpool size: {0}'.format(len(path)),
 
         curr_element=next((element for element in el_kt_list if curr_knot[0] in element), None)
         if not (curr_element is None):
@@ -207,7 +207,7 @@ def find_path(crit, el_kt_list, sorted_knots, excl_knot):
 
     if crit == 1:
         path.append([path[-1][1], path[0][0]])
-    print '\n'
+    # print '\n'
     return path
 
 
@@ -310,8 +310,8 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 
                 knots_list.extend(ARC_knots_list)
 
-    print 'remove duplicates'
-    print 'number of segments: ', len(elements_list)
+    # print 'remove duplicates'
+    # print 'number of segments: ', len(elements_list)
 
     hrd_element_list.append(elements_list[0])
 
@@ -319,8 +319,8 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
         tmp=[var for hrd_var in hrd_element_list if (var[0] in hrd_var) and (var[1] in hrd_var)]
         if  not len(tmp):
             hrd_element_list.append(var)
+            # print 'removed elemts: ', len(elements_list)-len(hrd_element_list)
 
-    print 'removed elemts: ', len(elements_list)-len(hrd_element_list)
 
     knots_list=[(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in knots_list]
     hrd_element_list=[[(var1[0]-path_offset[0], var1[1]-path_offset[1], var1[2]-path_offset[2]), (var2[0]-path_offset[0], var2[1]-path_offset[1], var2[2]-path_offset[2])]for var1, var2 in hrd_element_list]
@@ -379,9 +379,8 @@ if 1:
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'skip equivalence sections', eq_sect_skip))
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'closed path collection dir', path_dir))
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'files', files_dxf))
+    print('{0}{1:<30}: {2}'.format(' ' * 10, 'layer name', layer_list[0]))
 
-    print('\n\n{0:6}|{1:6}|{2:6}|{3:6}|{4:6}|{5:6}|{6:6}|{7:^20}'.format(
-        'file', 'layer', 'lines', 'arcs', '1 -knt', '2 -knt', '3 -knt', 'status'))
     print('{0}'.format('-' * 80))
 
     for i, files_dxf_member in enumerate(files_dxf):
@@ -412,9 +411,8 @@ if 1:
 >>>>>>> ad63914... added coord_0 text as a ref coordinate system
 
         for layer_name in sorted(layer_name_list):
-            print('layer name: {}'.format(layer_name))
             knots_list, elements_list, segment_bounds, shape_count = dxf_read(dxf, layer_name, dec_acc, n_arc, l_arc)
-            print 'dxf loaded'
+            # print 'dxf loaded'
 
             sorted_knots = knots_dict(knots_list)
             el_kt_list = elements_coords2knots(elements_list, sorted_knots)
@@ -422,19 +420,11 @@ if 1:
             master_knot = knots_rank_find(knots_rank, 3)
             IO_knot = knots_rank_find(knots_rank, 1)
 
-            print('{0:6}|{1:6}|{2:6}|{3:6}|{4:6}|{5:6}|{6:6}|'.format(files_dxf_member, layer_name,
-                                                                      shape_count[
-                                                                          0], shape_count[1],
-                                                                      [x[1] for x in knots_rank].count(
-                                                                          1),
-                                                                      [x[1] for x in knots_rank].count(
-                                                                          2),
-                                                                      [x[1] for x in knots_rank].count(3), ' ')),
 
             if len(IO_knot) != 1 or len(master_knot) != 1 or IO_knot[0] == None or master_knot[0] == None:
                 print('{0:^20}|'.format('SKIPPED'))
                 for var in IO_knot:
-                    print("IO knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
+                    print("IO knot error: {0} coord: {1:[0:1]}".format(var,knot2coord(sorted_knots, var)))
                 for var in master_knot:
                     print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
                 var =10
@@ -443,10 +433,8 @@ if 1:
             else:
 
                 io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
-                print('{0:3}: {1:4d}|'.format('i/o', len(io_path))),
                 last_el, excl_knot = find_l_el(path_dir, el_kt_list, sorted_knots, master_knot[0])
                 ct_path = find_path(1, el_kt_list, sorted_knots, excl_knot[0])  # loop path
-                print('{0:3}: {1:4d}|'.format('ct', len(ct_path)))
 
 
                 io_knots_coord = [knot2coord(sorted_knots,var[0]) for var in io_path]
@@ -472,8 +460,6 @@ if 1:
                             section.append(var)
                     section_list.append(section)
 
-
-
                     for i, section in enumerate(section_list):
                         if i not in eq_sect_skip and i not in [var+len(segment_bounds) for var in eq_sect_skip]:
                             # print('equivalence section {}'.format(i))
@@ -493,7 +479,12 @@ if 1:
                     #flatten the list of lists
                     section_list = [var for sublist in updated_section_list for var in sublist]
 #EQUIVALENCE SECTION
-                # print(section_list)
+
+#SUMMARY
+                print('{0:15}: {1:4d}|\n'.format('i/o  seg.', len(section_list)-1)),
+                print('{0:15}: {1:4d}|\n'.format('loop seg.', len(ct_path)))
+                print('{0}'.format('-' * 80))
+#SUMMARY
 
                 i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
                 knots2file_1(i_file_name, section_list, z_coord)
