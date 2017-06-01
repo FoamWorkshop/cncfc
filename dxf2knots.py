@@ -109,13 +109,13 @@ def knots2file(name, io_path, sorted_knots):
 
     f.close()
 
-def knots2file_1(name, section_list):
+def knots2file_1(name, section_list, z_coord):
     f = open(name, 'w')
     # print('TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTt')
     for var in section_list:
         # coord = knot2coord(sorted_knots, var[0])
         # print(var)
-        f.write('{0:.3f} {1:.3f}\n'.format(var[0], var[1]))
+        f.write('{0:.3f} {1:.3f} {2:.3f}\n'.format(var[0], var[1], z_coord))
 
     # coord = knot2coord(sorted_knots, io_path[-1][1])
     # f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
@@ -312,7 +312,7 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 
     print 'remove duplicates'
     print 'number of segments: ', len(elements_list)
-    #hrd_knots_list.append(knots_list[0])
+
     hrd_element_list.append(elements_list[0])
 
     for var in elements_list:
@@ -324,7 +324,7 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 
     knots_list=[(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in knots_list]
     hrd_element_list=[[(var1[0]-path_offset[0], var1[1]-path_offset[1], var1[2]-path_offset[2]), (var2[0]-path_offset[0], var2[1]-path_offset[1], var2[2]-path_offset[2])]for var1, var2 in hrd_element_list]
-
+    segment_bounds = [(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in segment_bounds]
     return (knots_list, hrd_element_list, segment_bounds, [line_count, arc_count])
 
 
@@ -352,6 +352,9 @@ parser.add_argument('-eq', '--equivalence_knots', type=int,
 parser.add_argument('-eq_skip', '--skip_eq_sections', nargs='+', type=int,
                     default=[], help='equivalence knots sections to specified number')
 
+parser.add_argument('-z', '--z_coord', type=float,
+                    default=0, help='add z coordinate to knots')
+
 args = parser.parse_args()
 
 dxf_list = args.input
@@ -362,6 +365,7 @@ l_arc = args.arc_seg_len
 path_dir = args.collection_dir
 eq_sect = args.equivalence_knots
 eq_sect_skip = args.skip_eq_sections
+z_coord = args.z_coord
 
 files_dxf = dxf_list
 
@@ -450,7 +454,9 @@ if 1:
 
 #EQUIVALENCE SECTION
                 section_list = io_knots_coord
+
                 if eq_sect:
+                    print('requested splits: {}'.format(len(segment_bounds)))
                     section_list = []
                     section = []
                     updated_section_list = []
@@ -458,14 +464,18 @@ if 1:
                     # print(segment_bounds)
                     for i, var in enumerate(io_knots_coord):
                         section.append(var)
+                        # print(var)
                         if var in segment_bounds:
                             # print(var)
                             section_list.append(section)
                             section = []
                             section.append(var)
+                    section_list.append(section)
+
+
 
                     for i, section in enumerate(section_list):
-                        if i not in eq_sect_skip:
+                        if i not in eq_sect_skip and i not in [var+len(segment_bounds) for var in eq_sect_skip]:
                             # print('equivalence section {}'.format(i))
                             p = np.array(section)
                             l = np.sqrt(np.diff(p[:,0])**2 + np.diff(p[:,1])**2)
@@ -480,15 +490,17 @@ if 1:
                             # print(z)
                             section = z.tolist()
                         updated_section_list.append(section)
+                    #flatten the list of lists
                     section_list = [var for sublist in updated_section_list for var in sublist]
 #EQUIVALENCE SECTION
+                # print(section_list)
 
                 i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
-                knots2file_1(i_file_name, section_list)
+                knots2file_1(i_file_name, section_list, z_coord)
                 # knots2file(i_file_name, io_path, sorted_knots)
 
                 o_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '3', 'knt')
-                knots2file_1(o_file_name, section_list[::-1])
+                knots2file_1(o_file_name, section_list[::-1], z_coord)
                 # knots2file(o_file_name, [var[::-1]
                 #                          for var in io_path[::-1]], sorted_knots)
 

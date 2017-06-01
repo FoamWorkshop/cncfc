@@ -167,9 +167,11 @@ if not output_f_name:
 knt_data_xy = read_data(knt_set_xy, False)
 knt_data_uv = read_data(knt_set_uv, False)
 
+# for i, var in enumerate(knt_set_xy):
+#     print(i, var)
 
-if len(knt_set_xy)!=len(knt_set_uv):
-    print('knots: {0} - {1} are not balanced. EXIT'.format(knt_set_xy, knt_set_uv))
+if len(knt_data_xy)!=len(knt_data_uv):
+    print('knots: {0} - {1} are not balanced ({2} - {3}). EXIT'.format(knt_set_xy, knt_set_uv, len(knt_data_xy), len(knt_data_uv)))
 else:
     print('processing knots: {0} - {1}'.format(knt_set_xy, knt_set_uv))
 
