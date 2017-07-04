@@ -279,40 +279,60 @@ def dxf_read(files, layer_name, tol):
     p_set= []
     c_set= []
 
+    path_offset = (0,0,0)
+
     for shape in dxf.entities:
         if shape.layer == layer_name:
+
+            if shape.dxftype == 'MTEXT':
+                if shape.raw_text == 'coord_0':
+                    # print('path offset: {}'.format(shape.insert))
+                    path_offset = tuple(round(x, tol) for x in shape.insert)
+                    print('path offset: {}'.format(path_offset))
+
+    for shape in dxf.entities:
+        if shape.layer == layer_name:
+
             if shape.dxftype == 'LINE':
                 line_count += 1
                 p_st = shape.start
                 p_en = shape.end
-                p_set.append( pt(round(p_st[0],tol), round(p_st[1],tol)))
-                p_set.append( pt(round(p_en[0],tol), round(p_en[1],tol)))
+                p_set.append( pt(round(p_st[0]-path_offset[0],tol), round(p_st[1]-path_offset[1],tol)))
+                p_set.append( pt(round(p_en[0]-path_offset[0],tol), round(p_en[1]-path_offset[1],tol)))
 
             if shape.dxftype == 'CIRCLE':
                 circle_count += 1
                 pt_O_list = shape.center
-                c_set.append(pt(round(pt_O_list[0],tol), round(pt_O_list[1],tol)))
-
-    # hrd_element_list.append(elements_list[0])
+                c_set.append(pt(round(pt_O_list[0]-path_offset[0],tol), round(pt_O_list[1]-path_offset[1],tol)))
 
     return (p_set, c_set, [line_count, circle_count])
 
 def model_data_check(layer_P_list,layer_O_list, layer_c_set_list):
-    for pt_P_list, pt_O_list, c_set in zip(layer_P_list,layer_O_list, layer_c_set_list):
+    for i, (pt_P_list, pt_O_list, c_set) in enumerate(zip(layer_P_list,layer_O_list, layer_c_set_list)):
         print layer_name
         if len(c_set) == 0:
+            print('section: {}'.format(i))
             print('no circle defining the start point')
             return 0
         elif len(c_set) >1:
+            print('section: {}'.format(i))
             print('more than one circle defining the start point:\n {}'.format(c_set))
             return 0
         elif not(c_set[0] in pt_P_list):
+            print('section: {}'.format(i))
             print('circle center position does not match any section node')
+            print('c_set: {}'.format(c_set[0]))
+            print('P list:')
+            for i, var in enumerate(pt_P_list):
+                print('{}: {}'.format(i,var))
+
             return 0
         elif len(pt_O_list) != 1:
+            print('section: {}'.format(i))
             print('error, not single center point: {}'.format(pt_O_list))
             return 0
         elif len(p_set)/2 != len(pt_P_list):
+            print('section: {}'.format(i))
             print('some extra sections are present')
             return 0
         else:
@@ -426,7 +446,8 @@ else:
         print('dxf file includes more than 1 spin layer: {}'.format(prof_spin_layer_name_list))
 
     else:
-        print('profile_layers: {}'.format(prof_layer_name_list))
+        print('profile layers: {}'.format(sorted(prof_layer_name_list)))
+        print('spin_layer: {}'.format(prof_spin_layer_name_list))
 
         for layer_name in sorted(prof_layer_name_list):
             p_set, c_set, shape_count = dxf_read(dxf, layer_name, dec_acc)
@@ -443,9 +464,9 @@ else:
         for layer_name in sorted(prof_spin_layer_name_list):
             dummy_1, c_set, dummy_2 = dxf_read(dxf, layer_name, dec_acc)
             C_Z = np.sort([var.y for var in c_set])
-            #-----SEKCJA DO POPRAWY. WCZYTANIE KOORDYNATOW Z
+        #-----SEKCJA DO POPRAWY. WCZYTANIE KOORDYNATOW Z
 
-        if model_data_check:
+        if model_data_check(layer_P_list,layer_O_list, layer_c_set_list):
 
             for pt_P_list, pt_O_list, c_set in zip(layer_P_list,layer_O_list, layer_c_set_list):
 

@@ -424,7 +424,7 @@ if 1:
             if len(IO_knot) != 1 or len(master_knot) != 1 or IO_knot[0] == None or master_knot[0] == None:
                 print('{0:^20}|'.format('SKIPPED'))
                 for var in IO_knot:
-                    print("IO knot error: {0} coord: {1:[0:1]}".format(var,knot2coord(sorted_knots, var)))
+                    print("IO knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
                 for var in master_knot:
                     print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
                 var =10
@@ -444,7 +444,7 @@ if 1:
                 section_list = io_knots_coord
 
                 if eq_sect:
-                    print('requested splits: {}'.format(len(segment_bounds)))
+                    print('drw. splits: {0:4d}'.format(len(segment_bounds)))
                     section_list = []
                     section = []
                     updated_section_list = []
@@ -481,8 +481,8 @@ if 1:
 #EQUIVALENCE SECTION
 
 #SUMMARY
-                print('{0:15}: {1:4d}|\n'.format('i/o  seg.', len(section_list)-1)),
-                print('{0:15}: {1:4d}|\n'.format('loop seg.', len(ct_path)))
+                print('{0:11}: {1:4d}\n'.format('i/o  seg.', len(section_list)-1)),
+                print('{0:11}: {1:4d}\n'.format('loop seg.', len(ct_path)))
                 print('{0}'.format('-' * 80))
 #SUMMARY
 
