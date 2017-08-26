@@ -259,7 +259,24 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 #    list_entities(dxf)
 
     for shape in dxf.entities:
+        print(shape.dxftype)
         if shape.layer == layer_name:
+            if shape.dxftype == 'SPLINE':
+
+                print('degree: ',shape.degree)
+                print('start tangent: ',shape.start_tangent)
+                print('end tangent: ',shape.end_tangent)
+                print('control points: ',shape.control_points)
+                print('fit points: ',shape.fit_points)
+                print('knots: ',shape.knots)
+                print('weights: ',shape.weights)
+                print('normal vector: ',shape.normal_vector)
+
+                # circle_count += 1
+                # p1 = tuple(round(x, tol) for x in shape.center)
+                # segment_bounds.append(p1)
+                # # print(circle_count, p1)
+
             if shape.dxftype == 'CIRCLE':
                 circle_count += 1
                 p1 = tuple(round(x, tol) for x in shape.center)
