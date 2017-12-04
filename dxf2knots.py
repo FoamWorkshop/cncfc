@@ -111,7 +111,7 @@ def knots2file(name, io_path, sorted_knots):
 
 def knots2file_1(name, section_list, z_coord):
     f = open(name, 'w')
-    # print('TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTt')
+    # print('TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
     for var in section_list:
         # coord = knot2coord(sorted_knots, var[0])
         # print(var)
