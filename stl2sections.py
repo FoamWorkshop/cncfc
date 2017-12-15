@@ -3,7 +3,8 @@ from stl import mesh
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
-
+import cncfclib as cf
+from scipy.interpolate import griddata
 
 def v2v_dist(v1, v2):
     return np.linalg.norm(v2-v1)
@@ -27,6 +28,27 @@ def line_plane_intersect(L, D0, n0):
     n_norm = n0/np.linalg.norm(n0)
     d = np.dot((D0 - L0),n_norm)/np.dot(l, n_norm)
     return L0 + d * l
+def cartesian2cylyndrical(p):
+    p=p.round(2)
+    r = np.linalg.norm(p[:,:2],axis=1)
+    th = np.arctan2(p[:,0],p[:,1])
+    th[np.where(np.abs(th)==np.pi)]=0
+    z = p[:,2]
+    res = np.vstack([r , th, z]).T
+    ind = np.lexsort((res[:,1],res[:,2]))
+    return res[ind]
+
+def cylyndrical2cartesian(p):
+    if p.size>3:
+        rho=p[:,0]
+        phi=p[:,1]
+        z=p[:,2]
+    else:
+        rho=p[0]
+        phi=p[1]
+        z=p[2]
+
+    return np.vstack([rho * np.cos(phi),rho * np.sin(phi),z]).T
 
 def find3dpoint(p, pf):
     '''function searches for /pf/ vector in an array of vectors /p/
@@ -50,6 +72,22 @@ def find_nearest(p, pf):
 def round_arr(p, dec):
     return np.apply_along_axis(np.round,0,p,dec)
 
+def slice_mesh(mesh, cp_n0_arr, cp_D0_arr):
+    section_list=[]
+    print('slicing the model')
+    for i, (n0, D0) in enumerate(zip(cp_n0_arr, cp_D0_arr)):
+        intersect_list = []
+        for tri in mesh.vectors:
+            ABC = np.vstack(tri)
+            L=np.hstack([ABC,np.roll(ABC, -1, axis=0)]).astype(float)
+            intersect=tri_plane_intersect_check(L,D0,n0)
+            if np.size(intersect):
+                intersect_list.append(intersect)
+
+        print('profile: {}; sections: {}'.format(i,len(intersect_list)))
+        section_list.append(intersect_list)
+    return section_list
+
 def make_loop(b):
     '''function returns an array of subsequent points from an unsorted
        array of contour sections /b/. An example of the contour sections array:
@@ -58,22 +96,27 @@ def make_loop(b):
                 [[2, 4, 0], [4, 4, 0]],
                 [[1, 1,	0],	[1,	2, 0]]])
     '''
-    p=b.astype(np.float)
-    p=p.round(4)
-    p_out = np.zeros_like(p[:,0])
-    idx_row = 0
-    idx_col = 0
+    p_out=[]
+    if b.size:
+        print(b.size)
+        # print(b)
+        p=b.astype(np.float)
+        p=b.round(4)
+        p_out = np.zeros_like(p[:,0])
+        idx_row = 0
+        idx_col = 0
 
-    p_first = p[idx_row, idx_col]
-    p_out[0] = p_first
-    for i in np.arange(0, p.shape[0]):
-        next_idx_row = np.setdiff1d(find3dpoint(p, p_first), idx_row)[0]
-        next_idx_col = find3dpoint(p[next_idx_row], p_first)
-        el_next=p[ next_idx_row, next_idx_col^1]
-        p_out[i] = el_next
-        p_first = el_next
-        idx_row = next_idx_row
-        idx_col = next_idx_col
+        p_first = p[idx_row, idx_col]
+        p_out[0] = p_first
+        for i in np.arange(0, p.shape[0]):
+            next_idx_row = np.setdiff1d(find3dpoint(p, p_first), idx_row)[0]
+            next_idx_col = find3dpoint(p[next_idx_row], p_first)
+            el_next=p[ next_idx_row, next_idx_col^1]
+            print(el_next)
+            p_out[i] = el_next
+            p_first = el_next
+            idx_row = next_idx_row
+            idx_col = next_idx_col
     return p_out
 
 def plot_section(section):
@@ -97,7 +140,7 @@ def tri_plane_intersect_check(L,D0,n0):
     P2_dist=np.apply_along_axis(point_plane_dist,1,P2,D0,n0)
     p=np.where(P1_dist*P2_dist<=0)[0]
     cross_vect=np.array([])
-    if np.size(p):
+    if p.size:
         cross_vect=np.apply_along_axis(line_plane_intersect,1,L[p,:],D0,n0)
     return cross_vect
 
@@ -110,55 +153,89 @@ def make_chains(section_list):
         prof=make_loop(p_arr)
     return chain_list
 
-P1 =np.array([1,1,0])
-L0 =np.array([10,1.5,4])
-L1 =np.array([10,1  ,5])
-L  =np.array([[[1,2,3],[12,3,4]],[[1,2,3],[12,3,4]]])
-# D0 =
-# n0 =
-A =np.array([1.5,0,10])
-B =np.array([1,0,10])
-C =np.array([0,0,1])
-# print(point_plane_dist(P1, D0, n0))
-n_sect=10
-cp_n0_arr = np.array([[0,0,1]]*n_sect)
-cp_D0_arr = np.array([[0,0,1]]*n_sect) * np.vstack(np.linspace(10,215*0.99,n_sect))
 
-mesh = mesh.Mesh.from_file('fus.txt')
+mesh = mesh.Mesh.from_file('cube_2.stl')
 
-section_list=[]
-print('slicing the model')
-for i, (n0, D0) in enumerate(zip(cp_n0_arr, cp_D0_arr)):
-    intersect_list = []
-    for tri in mesh.vectors:
-        ABC = np.vstack(tri)
-        L=np.hstack([ABC,np.roll(ABC, -1, axis=0)]).astype(float)
-        intersect=tri_plane_intersect_check(L,D0,n0)
-        if np.size(intersect):
-            intersect_list.append(intersect)
+# sect_n=10
+# sect_space = np.linspace(0.001,200,sect_n)
+# cp_n0_Barr = np.array([[0,0,1]]*sect_n)
+# cp_D0_arr = np.array([[0,0,1]]*sect_n) * np.vstack(sect_space)
+# section_list=slice_mesh(mesh, cp_n0_arr, cp_D0_arr)
 
-    print('profile: {}; sections: {}'.format(i,len(intersect_list)))
-    section_list.append(intersect_list)
-
-T0_plane_D0=np.array([0,0,0])
-T0_plane_n0=np.array([1,0,0])
-T1_plane_D0=np.array([0,0,0])
-T1_plane_n0=np.array([0,1,0])
-
-# plot_section(np.array(section_list[10]).round(3))
-
+sect_n=2
+sect_space = np.linspace(0,3,sect_n)
+cp_n0_arr = np.array([[0,1,0]]*sect_n)
+cp_D0_arr = np.array([[0,1,0]]*sect_n) * np.vstack(sect_space)
+# section_sym = slice_mesh(mesh, cp_n0_arr, cp_D0_arr)
+v_arr = np.vstack(mesh.vectors).round(3)
+v_arr_cyl = cartesian2cylyndrical(v_arr)
+pos_arr = v_arr_cyl[:,1:]
+val_arr = v_arr_cyl[:,0]
+# print(v_arr_cyl)s
+# th=np.linspace(-np.pi*0.75,np.pi*0.75,36)
+# z = 30*np.ones_like(th)
+# x = np.vstack([th,z]).T
+# r = griddata( pos_arr , val_arr, x, method='linear')
+# print(r)
+# print(np.argmax(v_arr_cyl[:,1]))
+# print(v_arr_cyl[np.argmax(v_arr_cyl[:,1])])
+# print(np.pi)
+# # for the in list(np.linspace(0,np.pi,180)):
+# #     x=(the,1)
+# #     r = griddata( pos_arr , val_arr, x, method='linear')
+# #     grid = np.hstack([r, x])
+# #     v_arr_car = cylyndrical2cartesian(grid)
+# #     print(v_arr_car)
+# print('r: ',r)
+# # print(r.T)
+# v_arr_car = cylyndrical2cartesian(np.hstack([np.vstack(r),x]))
+#
+# print(v_arr_car)
+#
+# # print(v_arr_cyl)
+# # print(v_arr.shape)
 fig = plt.figure()
 ax = fig.gca(projection='3d')
-
-for i, section in enumerate(section_list):
-    p_arr =  np.array(section)
-    print(p_arr.shape[0])
-    print('section: ',i)
-    if p_arr.shape[0]>3:
-        prof=make_loop(p_arr)
-        x = prof[:,0]
-        y = prof[:,1]
-        z = prof[:,2]
-        ax.plot(x, y, z)
-        ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
+# v_arr_cyl
+x = v_arr_cyl[:,0]
+y = v_arr_cyl[:,1]
+z = v_arr_cyl[:,2]
+# ax.plot(x, y, z)
+# x = v_arr[:,0]
+# y = v_arr[:,1]
+# z = v_arr[:,2]
+ax.plot(x, y, z,'o-')
 plt.show()
+
+
+
+# plot_section(section_list[0])
+
+# fig = plt.figure()
+# ax = fig.gca(projection='3d')
+
+# for i, section in enumerate(section_list):
+#     p_arr =  np.array(section)
+#     print(p_arr.shape[0])
+#     print('section: ',i)
+#     if p_arr.shape[0]>3:
+#         prof=make_loop(p_arr)
+#         x = prof[:,0]
+#         y = prof[:,1]
+#         z = prof[:,2]
+#         ax.plot(x, y, z)
+#         ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
+# for i, section in enumerate(section_sym):
+#     p_arr =  np.array(section)
+#     print(p_arr.shape[0])
+#     print('section: ',i)
+#     if p_arr.shape[0]>3:
+#         prof=make_loop(p_arr)
+#         x = prof[:,0]
+#         y = prof[:,1]
+#         z = prof[:,2]
+#         ax.plot(x, y, z)
+#         ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
+#
+#
+# plt.show()

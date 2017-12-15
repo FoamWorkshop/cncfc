@@ -405,31 +405,41 @@ if 1:
         case_name = os.path.splitext(files_dxf_member)
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = dxf.layers
-<<<<<<< HEAD
-        # for var in dxf_layers:
-        #     print var.name
-        #
-        # print layer_list
 
-<<<<<<< HEAD
+
+        # print(layer_list)
+        # for var in dxf_layers:
+        #     print(var.name)
+        # if len(layer_list):
+        #
+        #     layer_name_list= [ var.name for var in dxf_layers if var.name in layer_list]
+        #
+        #
+        # else:
+        #     layer_name_list = [var.name for var in dxf_layers if not ('~' in var or len(var.name)==1)]
+        #
+        # print(layer_name_list)
+
+
+# <<<<<<< HEAD
         if len(layer_list):
-<<<<<<< HEAD
-            layer_name_list= [ var.name for var in dxf_layers if var in layer_list]
-=======
+# <<<<<<< HEAD
+            # layer_name_list= [ var.name for var in dxf_layers if var in layer_list]
+# =======
             layer_name_list= [ var.name for var in dxf_layers if var.name in layer_list]
->>>>>>> f979f5e... added loft cut
+# >>>>>>> f979f5e... added loft cut
         else:
             layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
-=======
+# =======
 
-=======
->>>>>>> 9d1cd0a... added option eq, eq_skip working eqbalance sections
+# =======
+# >>>>>>> 9d1cd0a... added option eq, eq_skip working eqbalance sections
         layer_name_list= [ var.name for var in dxf_layers if layer_list[0] in var.name]
->>>>>>> ad63914... added coord_0 text as a ref coordinate system
+# >>>>>>> ad63914... added coord_0 text as a ref coordinate system
 
         for layer_name in sorted(layer_name_list):
             knots_list, elements_list, segment_bounds, shape_count = dxf_read(dxf, layer_name, dec_acc, n_arc, l_arc)
-            # print 'dxf loaded'
+            print 'dxf loaded'
 
             sorted_knots = knots_dict(knots_list)
             el_kt_list = elements_coords2knots(elements_list, sorted_knots)
