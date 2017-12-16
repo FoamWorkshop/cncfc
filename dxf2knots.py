@@ -259,7 +259,7 @@ def dxf_read(files, layer_name, dec_acc, n_arc, l_arc):
 #    list_entities(dxf)
 
     for shape in dxf.entities:
-        print(shape.dxftype)
+        # print(shape.dxftype)
         if shape.layer == layer_name:
             if shape.dxftype == 'SPLINE':
 
@@ -360,7 +360,7 @@ parser.add_argument('-a', '--accuracy', type=int,
 parser.add_argument('-narc', '--arc_seg_num', type=int,
                     default=dflt_n_arc, help='arc segments number, default: 10')
 parser.add_argument('-larc', '--arc_seg_len', type=int,
-                    default=dflt_l_arc, help='minimal arc segment length, default: 1')
+                    default=dflt_l_arc, help='minimal arc segment length, default: 0.1')
 parser.add_argument('-cw', '--collection_dir', type=int,
                     default=dflt_path_dir, help='closed path collection dir')
 parser.add_argument('-eq', '--equivalence_knots', type=int,
@@ -371,6 +371,9 @@ parser.add_argument('-eq_skip', '--skip_eq_sections', nargs='+', type=int,
 
 parser.add_argument('-z', '--z_coord', type=float,
                     default=0, help='add z coordinate to knots')
+
+parser.add_argument('-op', '--output_path', type=str,
+                    default='123', help='output path request')
 
 args = parser.parse_args()
 
@@ -383,6 +386,7 @@ path_dir = args.collection_dir
 eq_sect = args.equivalence_knots
 eq_sect_skip = args.skip_eq_sections
 z_coord = args.z_coord
+output_path = args.output_path
 
 files_dxf = dxf_list
 
@@ -397,6 +401,7 @@ if 1:
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'closed path collection dir', path_dir))
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'files', files_dxf))
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'layer name', layer_list[0]))
+    print('{0}{1:<30}: {2}'.format(' ' * 10, 'output paths', output_path))
 
     print('{0}'.format('-' * 80))
 
@@ -512,18 +517,15 @@ if 1:
                 print('{0:11}: {1:4d}\n'.format('loop seg.', len(ct_path)))
                 print('{0}'.format('-' * 80))
 #SUMMARY
-
-                i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
-                knots2file_1(i_file_name, section_list, z_coord)
+                if '1' in output_path:
+                    i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
+                    knots2file_1(i_file_name, section_list, z_coord)
                 # knots2file(i_file_name, io_path, sorted_knots)
-
-                o_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '3', 'knt')
-                knots2file_1(o_file_name, section_list[::-1], z_coord)
+                if '3' in output_path:
+                    o_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '3', 'knt')
+                    knots2file_1(o_file_name, section_list[::-1], z_coord)
                 # knots2file(o_file_name, [var[::-1]
                 #                          for var in io_path[::-1]], sorted_knots)
-
-
-                ct_file_name = '{1}{2}.{3}'.format(
-                    case_name[0], layer_name, '2', 'knt')
-
-                knots2file(ct_file_name, ct_path, sorted_knots)
+                if '2' in output_path:
+                    ct_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '2', 'knt')
+                    knots2file(ct_file_name, ct_path, sorted_knots)
