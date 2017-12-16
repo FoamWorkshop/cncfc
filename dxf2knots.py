@@ -365,13 +365,10 @@ parser.add_argument('-cw', '--collection_dir', type=int,
                     default=dflt_path_dir, help='closed path collection dir')
 parser.add_argument('-eq', '--equivalence_knots', type=int,
                     default=False, help='equivalence knots sections to specified number')
-
 parser.add_argument('-eq_skip', '--skip_eq_sections', nargs='+', type=int,
                     default=[], help='equivalence knots sections to specified number')
-
 parser.add_argument('-z', '--z_coord', type=float,
                     default=0, help='add z coordinate to knots')
-
 parser.add_argument('-op', '--output_path', type=str,
                     default='123', help='output path request')
 

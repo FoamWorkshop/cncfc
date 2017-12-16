@@ -1,0 +1,9 @@
+
+G21 (Units in millimeters)  G90 (Absolute programming)
+F180
+o<ex_01_0000> call
+o<ex_01_0100> call
+o<ex_01_0200> call
+o<ex_01_0300> call
+M2
+
