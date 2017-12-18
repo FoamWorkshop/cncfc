@@ -1,0 +1,7 @@
+stl to dxf - slice the model to create crossections
+stl to paths - slice the model to create 3d paths
+make the wing generator with output dxf, OVSP, FreeCAD?
+migrate from knt to xml
+make an interface to OpenVSP
+include the compensation matrix for 3d cuts
+write documentation

@@ -359,7 +359,7 @@ parser.add_argument('-a', '--accuracy', type=int,
                     default=dflt_dec_acc, help='decimal accuracy, default: 3')
 parser.add_argument('-narc', '--arc_seg_num', type=int,
                     default=dflt_n_arc, help='arc segments number, default: 10')
-parser.add_argument('-larc', '--arc_seg_len', type=int,
+parser.add_argument('-larc', '--arc_seg_len', type=float,
                     default=dflt_l_arc, help='minimal arc segment length, default: 0.1')
 parser.add_argument('-cw', '--collection_dir', type=int,
                     default=dflt_path_dir, help='closed path collection dir')
@@ -399,7 +399,6 @@ if 1:
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'files', files_dxf))
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'layer name', layer_list[0]))
     print('{0}{1:<30}: {2}'.format(' ' * 10, 'output paths', output_path))
-
     print('{0}'.format('-' * 80))
 
     for i, files_dxf_member in enumerate(files_dxf):
@@ -408,36 +407,12 @@ if 1:
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = dxf.layers
 
-
-        # print(layer_list)
-        # for var in dxf_layers:
-        #     print(var.name)
-        # if len(layer_list):
-        #
-        #     layer_name_list= [ var.name for var in dxf_layers if var.name in layer_list]
-        #
-        #
-        # else:
-        #     layer_name_list = [var.name for var in dxf_layers if not ('~' in var or len(var.name)==1)]
-        #
-        # print(layer_name_list)
-
-
-# <<<<<<< HEAD
         if len(layer_list):
-# <<<<<<< HEAD
-            # layer_name_list= [ var.name for var in dxf_layers if var in layer_list]
-# =======
             layer_name_list= [ var.name for var in dxf_layers if var.name in layer_list]
-# >>>>>>> f979f5e... added loft cut
         else:
             layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
-# =======
 
-# =======
-# >>>>>>> 9d1cd0a... added option eq, eq_skip working eqbalance sections
         layer_name_list= [ var.name for var in dxf_layers if layer_list[0] in var.name]
-# >>>>>>> ad63914... added coord_0 text as a ref coordinate system
 
         for layer_name in sorted(layer_name_list):
             knots_list, elements_list, segment_bounds, shape_count = dxf_read(dxf, layer_name, dec_acc, n_arc, l_arc)
@@ -508,7 +483,6 @@ if 1:
                     #flatten the list of lists
                     section_list = [var for sublist in updated_section_list for var in sublist]
 #EQUIVALENCE SECTION
-
 #SUMMARY
                 print('{0:11}: {1:4d}\n'.format('i/o  seg.', len(section_list)-1)),
                 print('{0:11}: {1:4d}\n'.format('loop seg.', len(ct_path)))
@@ -517,12 +491,11 @@ if 1:
                 if '1' in output_path:
                     i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
                     knots2file_1(i_file_name, section_list, z_coord)
-                # knots2file(i_file_name, io_path, sorted_knots)
+
                 if '3' in output_path:
                     o_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '3', 'knt')
                     knots2file_1(o_file_name, section_list[::-1], z_coord)
-                # knots2file(o_file_name, [var[::-1]
-                #                          for var in io_path[::-1]], sorted_knots)
+
                 if '2' in output_path:
                     ct_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '2', 'knt')
                     knots2file(ct_file_name, ct_path, sorted_knots)
