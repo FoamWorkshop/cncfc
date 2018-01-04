@@ -28,17 +28,21 @@ def line_plane_intersect(L, D0, n0):
     n_norm = n0/np.linalg.norm(n0)
     d = np.dot((D0 - L0),n_norm)/np.dot(l, n_norm)
     return L0 + d * l
-def cartesian2cylyndrical(data_points):
+def cartesian2cylyndrical(data_points,sections,dir):
     # p=p.round(2)
     p=np.unique(data_points,axis=0)
     p_size=np.size(p)
-    r = np.linalg.norm(p[:,:2],axis=1)
-    th = np.arctan2(p[:,0],p[:,1])
+
+    x = p[:,0]
+    y = p[:,1]
     z = p[:,2]
+
+    r =  np.linalg.norm(np.vstack((x,y)),axis=0)
+    th = np.arctan2(x,y)
     pos = np.vstack([r, th, z]).T
-    ind = np.lexsort((pos[:,1],pos[:,2]))
-    pos=pos[ind].reshape((-1,16,3))
-    print(np.shape(pos))
+    ind = np.lexsort((th,z))
+    pos=pos[ind].reshape((-1,sections-1,3))
+    # print(np.shape(pos))
     for i in np.arange(np.shape(pos)[0]):
         # print(pos[i,:,1])
         ind=np.argsort(pos[i,:,1])
@@ -58,7 +62,9 @@ def cylyndrical2cartesian(p):
         phi=p[1]
         z=p[2]
 
-    return np.vstack([rho * np.cos(phi),rho * np.sin(phi),z]).T
+    return np.vstack([rho * np.cos(phi),
+                      rho * np.sin(phi),
+                      z]).T
 
 def find3dpoint(p, pf):
     '''function searches for /pf/ vector in an array of vectors /p/
@@ -164,19 +170,17 @@ def make_chains(section_list):
     return chain_list
 
 
-mesh = mesh.Mesh.from_file('fuselage_rot.stl')
+mesh = mesh.Mesh.from_file('fuselage.stl')
+mesh.rotate([0,1,0],np.pi/2)
 
-sect_n=1
-sect_space = np.linspace(0,3,sect_n)
-cp_n0_arr = np.array([[0,1,0]]*sect_n)
-cp_D0_arr = np.array([[0,1,0]]*sect_n) * np.vstack(sect_space)
-# section_sym = slice_mesh(mesh, cp_n0_arr, cp_D0_arr)
 v_arr = np.round(np.vstack(mesh.vectors).astype(float), decimals=1)
-pos = cartesian2cylyndrical(v_arr)
+pos = cartesian2cylyndrical(v_arr,17,[0,1,2])
 
 fig = plt.figure()
 ax = fig.gca(projection='3d')
 for i in np.arange(np.shape(pos)[1]):
     spars = cylyndrical2cartesian(pos[:,i])
     ax.plot(spars[:,0],spars[:,1],spars[:,2],'x-')
+    # ax.plot(pos[:,i,0],pos[:,i,1],pos[:,i,2],'x-')
+    print(pos[:,i,1])
 plt.show()
