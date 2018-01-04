@@ -166,12 +166,6 @@ def make_chains(section_list):
 
 mesh = mesh.Mesh.from_file('fuselage_rot.stl')
 
-# sect_n=10
-# sect_space = np.linspace(0.001,200,sect_n)
-# cp_n0_Barr = np.array([[0,0,1]]*sect_n)
-# cp_D0_arr = np.array([[0,0,1]]*sect_n) * np.vstack(sect_space)
-# section_list=slice_mesh(mesh, cp_n0_arr, cp_D0_arr)
-
 sect_n=1
 sect_space = np.linspace(0,3,sect_n)
 cp_n0_arr = np.array([[0,1,0]]*sect_n)
@@ -179,34 +173,6 @@ cp_D0_arr = np.array([[0,1,0]]*sect_n) * np.vstack(sect_space)
 # section_sym = slice_mesh(mesh, cp_n0_arr, cp_D0_arr)
 v_arr = np.round(np.vstack(mesh.vectors).astype(float), decimals=1)
 pos = cartesian2cylyndrical(v_arr)
-# print(v_arr_cyl)
-# th = v_arr_cyl[:,1]
-# z = v_arr_cyl[:,2]
-# r = v_arr_cyl[:,0]
-
-
-# print(v_arr_cyl)
-# th=np.linspace(-np.pi*0.75,np.pi*0.75,36)
-# z = 30*np.ones_like(th)
-# x = np.vstack([th,z]).T
-# r = griddata( v_arr_cyl[:,1:] , v_arr_cyl[:,0], x, method='linear')
-# print(r)
-# print(np.argmax(v_arr_cyl[:,1]))
-# print(v_arr_cyl[np.argmax(v_arr_cyl[:,1])])
-# print(np.pi)
-
-# fig = plt.figure()
-# ax = fig.gca()
-# for i in np.arange(np.shape(pos)[0]):
-#     ax.plot(pos[i,:,1],pos[i,:,2],'x')
-# plt.show()
-#
-# fig = plt.figure()
-# ax = fig.gca(projection='3d')
-# for i in np.arange(np.shape(pos)[0]):
-#     spars = cylyndrical2cartesian(pos[i])
-#     ax.plot(spars[:,0],spars[:,1],spars[:,2],'x-')
-# plt.show()
 
 fig = plt.figure()
 ax = fig.gca(projection='3d')
@@ -214,80 +180,3 @@ for i in np.arange(np.shape(pos)[1]):
     spars = cylyndrical2cartesian(pos[:,i])
     ax.plot(spars[:,0],spars[:,1],spars[:,2],'x-')
 plt.show()
-
-
-# fig = plt.figure()
-# ax = fig.gca()
-# # ax = fig.gca(projection='3d')
-# for z_mem in np.linspace(0,300,20):
-#     the = np.linspace(-np.pi*0.6, np.pi*0.6,17)
-#     z = np.ones_like(the)*z_mem
-#     x=np.vstack((the,z)).T
-#     r = griddata( v_arr_cyl[:,1:] , v_arr_cyl[:,0], x, method='nearest')
-#     v_arr_car = cylyndrical2cartesian(np.vstack([r,the,z]).T)
-#     # print(r)
-#     # ax.plot(r, the,'o-')
-#     ax.plot(v_arr_cyl[:,2],v_arr_cyl[:,1],'x')
-#     # plt.ylim(-np.pi,np.pi)
-#     # plt.xlim(0,15)
-#     # plt.grid(True)
-#     # ax.plot(v_arr_cyl[:,0], v_arr_cyl[:,1], v_arr_cyl[:,2],'o')
-#     # ax.plot(r, the, z,'s-')
-#     # ax.plot(v_arr_car[:,0], v_arr_car[:,1], v_arr_car[:,2],'o-')
-# plt.show()
-
-    # v_arr_car = cylyndrical2cartesian(grid)
-    # print(v_arr_car)
-# print('r: ',r)
-# # print(r.T)
-# v_arr_car = cylyndrical2cartesian(np.hstack([np.vstack(r),x]))
-#
-# print(v_arr_car)
-#
-# # print(v_arr_cyl)
-# # print(v_arr.shape)
-# fig = plt.figure()
-# ax = fig.gca(projection='3d')
-# # v_arr_cyl
-# x = v_arr_cyl[:,0]
-# y = v_arr_cyl[:,1]
-# z = v_arr_cyl[:,2]
-# # ax.plot(x, y, z)
-# # x = v_arr[:,0]
-# # y = v_arr[:,1]
-# # z = v_arr[:,2]
-# ax.plot(x, y, z,'o-')
-# plt.show()
-
-
-
-# plot_section(section_list[0])
-
-# fig = plt.figure()
-# ax = fig.gca(projection='3d')
-
-# for i, section in enumerate(section_list):
-#     p_arr =  np.array(section)
-#     print(p_arr.shape[0])
-#     print('section: ',i)
-#     if p_arr.shape[0]>3:
-#         prof=make_loop(p_arr)
-#         x = prof[:,0]
-#         y = prof[:,1]
-#         z = prof[:,2]
-#         ax.plot(x, y, z)
-#         ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
-# for i, section in enumerate(section_sym):
-#     p_arr =  np.array(section)
-#     print(p_arr.shape[0])
-#     print('section: ',i)
-#     if p_arr.shape[0]>3:
-#         prof=make_loop(p_arr)
-#         x = prof[:,0]
-#         y = prof[:,1]
-#         z = prof[:,2]
-#         ax.plot(x, y, z)
-#         ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
-#
-#
-# plt.show()
