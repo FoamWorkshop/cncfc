@@ -1,8 +1,66 @@
+import sys
+import os
 import numpy as np
 from stl import mesh
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
+
+def read_data(f_name, msg='False'):
+
+    data = []
+
+    if os.path.isfile(f_name):
+
+        with open(f_name, 'r') as f:
+            for line in f:
+                tmp = line.split()
+                x, y, z = 0, 0, 0
+
+                if len(tmp) == 1:
+                    x = tmp[0]
+                    y = 0
+                    z = 0
+                elif len(tmp) == 2:
+                    x, y = tmp
+                    z = 0
+                elif len(tmp) == 3:
+                    x, y, z = tmp
+
+                data.append([float(x), float(y), float(z)])
+        if msg:
+            print("{0:<24} -> {1} knots".format(f_name, len(data)))
+
+    else:
+        if msg:
+            print('{0} not found'.format(f_name))
+
+    return data
+
+
+def write_data(f_name, data, msg='False'):
+    i = 0
+    print('assigned file name', f_name)
+    # if os.path.isfile(f_name):
+    #
+    #     bak_f_name = f_name + '.00.bak'
+    #
+    #     while os.path.isfile(bak_f_name):
+    #         bak_f_name = '{0}.{1:{fill}>2s}.bak'.format(
+    #             f_name, str(i), fill='0')
+    #         i += 1
+    #
+    #     os.rename(f_name, bak_f_name)
+    #
+    #     if msg:
+    #         print("{0:<24} -> {1}".format(f_name, bak_f_name))
+
+    with open(f_name, 'w') as f:
+        for line in data:
+            x, y, z = line
+            f.write('{0:.6f} {1:.6f} {2:.6f}\n'.format(
+                float(x), float(y), float(z)))
+
+    if msg:
+        print("{0:<24} <- {1} knots".format(f_name, len(data)))
+
 
 
 def v2v_dist(v1, v2):
@@ -109,56 +167,3 @@ def make_chains(section_list):
     if p_arr.shape[0]>3:
         prof=make_loop(p_arr)
     return chain_list
-
-P1 =np.array([1,1,0])
-L0 =np.array([10,1.5,4])
-L1 =np.array([10,1  ,5])
-L  =np.array([[[1,2,3],[12,3,4]],[[1,2,3],[12,3,4]]])
-# D0 =
-# n0 =
-A =np.array([1.5,0,10])
-B =np.array([1,0,10])
-C =np.array([0,0,1])
-# print(point_plane_dist(P1, D0, n0))
-n_sect=10
-cp_n0_arr = np.array([[0,0,1]]*n_sect)
-cp_D0_arr = np.array([[0,0,1]]*n_sect) * np.vstack(np.linspace(10,215*0.99,n_sect))
-
-mesh = mesh.Mesh.from_file('fuselage_rot.stl')
-
-section_list=[]
-print('slicing the model')
-for i, (n0, D0) in enumerate(zip(cp_n0_arr, cp_D0_arr)):
-    intersect_list = []
-    for tri in mesh.vectors:
-        ABC = np.vstack(tri)
-        L=np.hstack([ABC,np.roll(ABC, -1, axis=0)]).astype(float)
-        intersect=tri_plane_intersect_check(L,D0,n0)
-        if np.size(intersect):
-            intersect_list.append(intersect)
-
-    print('profile: {}; sections: {}'.format(i,len(intersect_list)))
-    section_list.append(intersect_list)
-
-T0_plane_D0=np.array([0,0,0])
-T0_plane_n0=np.array([1,0,0])
-T1_plane_D0=np.array([0,0,0])
-T1_plane_n0=np.array([0,1,0])
-
-# plot_section(np.array(section_list[10]).round(3))
-
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-
-for i, section in enumerate(section_list):
-    p_arr =  np.array(section)
-    print(p_arr.shape[0])
-    print('section: ',i)
-    if p_arr.shape[0]>3:
-        prof=make_loop(p_arr)
-        x = prof[:,0]
-        y = prof[:,1]
-        z = prof[:,2]
-        ax.plot(x, y, z)
-        ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
-plt.show()
