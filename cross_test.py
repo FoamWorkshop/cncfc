@@ -48,15 +48,30 @@ def proj_vector2plane( u, n, O = np.array([0, 0, 0])):
     u_proj = u - np.dot(u,n) / np.linalg.norm(n)**2 * n
     return u_proj + O
 
-def transform(spar_data):
-    '''
+
+def transform(spar_data0):
+    ''' resultant data collection:\n
+    angle, distance, slope vector
     '''
     v_ref = np.array([1,0,0])
-    angl = np.apply_along_axis(angle, 0, spar_data, v_ref=v_ref)
-    print(angl)
-    cross_point(P1, P2, Q1, Q2)
 
-test_data = np.arange(27).reshape(3,3,3)
+    spar_data1 = np.roll(spar_data0, 1, axis=0)
+    segment_vect = spar_data1 - spar_data0
+
+    ang_list=[]
+    for spar in spar_data0:
+        ang = np.apply_along_axis(angle, 1, spar_data0, v_ref)
+        ang_list.append(ang)
+    ang_vect = np.column_stack(ang_list)
+
+    for i, (Q2, Q1) in enumerate(zip(spar_data1, spar_data0)):
+        print(i)
+        print(Q2, Q1)
+    return 0
+    # cross_point(P1, P2, Q1, Q2)
+
+test_data = np.arange(27)**1.1
+test_data = test_data.reshape(3,3,3)
 P1=np.array([0,0,0])
 P2=np.array([0,-1,0])
 # P3=np.array([5,4,2])
@@ -65,6 +80,7 @@ Q2=np.array([0,0,3])
 
 # P, z, d = cross_point(P1, P2, Q1, Q2)
 # print(P, z, d)
+# print(test_data)
 print(transform(test_data))
 # tp, tq = cross_pointvv(P2-P1, Q2-Q1)
 # print(P1-tp, Q1-tq) 4.71238898  4.95736764  5.09289536]
