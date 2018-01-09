@@ -35,10 +35,9 @@ def cross_point(P1, P2, Q1, Q2):
 
     PS = P1 + sc * u
     QS = Q1 + tc * v
-    z = QS - PS
-    d = np.linalg.norm(z)
-
-    return (PS, z, d)
+    slope_v = QS - PS
+    d = np.linalg.norm(slope_v)
+    return (PS, slope_v/d, d)
 
 def proj_vector2plane( u, n, O = np.array([0, 0, 0])):
     '''vector to plane projection.\n
@@ -60,16 +59,34 @@ def transform(spar_data0):
 
     ang_list=[]
     for spar in spar_data0:
-        ang = np.apply_along_axis(angle, 1, spar_data0, v_ref)
+        ang = np.apply_along_axis(angle, -1, spar_data0, v_ref)
         ang_list.append(ang)
     ang_vect = np.column_stack(ang_list)
 
-    for i, (Q2, Q1) in enumerate(zip(spar_data1, spar_data0)):
-        print(i)
-        print(Q2, Q1)
-    return 0
-    # cross_point(P1, P2, Q1, Q2)
+    rot_P1 = np.zeros_like(spar_data0)
+    rot_P2 = np.ones_like(spar_data0) * [0,0,1]
+    buff_1 = []
+    buff_2P = []
+    buff_2z = []
+    buff_2d = []
+    for (sP1, sP2, sQ1, sQ2) in zip(rot_P1, rot_P2, spar_data0, spar_data1):
+        buff_P = []
+        buff_z = []
+        buff_d = []
 
+        for (P1, P2, Q1, Q2) in zip(sP1, sP2, sQ1, sQ2):
+            P, z, R = cross_point(P1, P2, Q1, Q2)
+            buff_P.append(P)
+            buff_z.append(z)
+            buff_d.append(d)
+        buff_2P.append(np.vstack(buff_P))
+        buff_2z.append(np.vstack(buff_z))
+        buff_2d.append(np.vstack(buff_d))
+
+#return ang, R, z, v
+
+    return (buff_2P, buff_2z, buff_2d)
+    # cross_point(P1, P2, Q1, Q2)
 test_data = np.arange(27)**1.1
 test_data = test_data.reshape(3,3,3)
 P1=np.array([0,0,0])
@@ -77,7 +94,7 @@ P2=np.array([0,-1,0])
 # P3=np.array([5,4,2])
 Q1=np.array([-2,-1,3])
 Q2=np.array([0,0,3])
-
+print(test_data)
 # P, z, d = cross_point(P1, P2, Q1, Q2)
 # print(P, z, d)
 # print(test_data)
