@@ -13,19 +13,24 @@ for i in np.arange(np.shape(pos)[0]):
     profiles[i] = cf.cylyndrical2cartesian(pos[i])
 
 # cf.plot_loft_paths(profiles)
-
-# print(profiles)
+# cf.plot_loft_paths(pos)
 
 strokes = np.flipud(np.rot90(profiles))
-# print(strokes)
-# data=np.zeros_like(profiles)
+ang_arr, r_arr, z_arr, v_arr = cf.transform(strokes, add_pedestal_bottom=True,add_pedestal_top=True)
 
-# for i in np.arange(np.shape(profiles)[1]):
-#     strokes[i]=profiles[:,i]
-#     # ax.plot(spars[:,0],spars[:,1],spars[:,2],'x-')
-#     ax.plot(data[:,i,0],data[:,i,1],data[:,i,2],'x-')
-#
-# print(profiles)
-# b=np.flipud(np.rot90(a))
+print('ang', ang_arr),
+print('r', r_arr)
+print('z', z_arr)
+print('v', v_arr)
 
-cf.interp_points_cyl(strokes,'sdsd','sadada')
+np.savetxt('r_arr',r_arr)
+np.savetxt('a_arr',ang_arr)
+np.savetxt('z_arr',z_arr)
+# np.savetxt('v_arr',v_arr)
+# add_pedestal()
+
+# buff_2v.tofile('ndarray_test.dat',sep=";")
+# np.save('ndarray_test.dat', buff_2v)
+# k=np.load('ndarray_test.dat.npy', mmap_mode='r')
+# print(k)
+print('saved')
