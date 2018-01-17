@@ -836,6 +836,31 @@ def transform(spar_data0, add_pedestal_top=False, add_pedestal_bottom=False):
             z_arr,
             v_arr)
 
+def add_pedestal(pos, add_pedestal_top=True, add_pedestal_bottom=True):
+    r = 35
+    h = np.array([0, 5, 5])
+    z1 = np.cumsum(h)
+    z2 = np.cumsum(h[::-1])
+    n_spars=pos.shape[1]
+
+    if add_pedestal_bottom:
+        pos[:,:,2] += np.sum(h)
+        p_arr_1 = np.tile(pos[0],(3,1,1))
+        p_arr_1[:,:,2] = np.vstack(z1)
+        p_arr_1[0,:,0] = r
+        pos=np.vstack([p_arr_1, pos])
+
+    if add_pedestal_top:
+        p_arr_2 = np.tile(pos[-1],(3,1,1))
+        p_arr_2[:,:,2] += np.vstack(z1)
+        p_arr_2[-1,:,0] = r
+        pos=np.vstack([pos, p_arr_2])
+
+
+    return pos
+
+
+
 
 
 if __name__ == '__main__':
