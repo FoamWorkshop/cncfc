@@ -1,7 +1,7 @@
 import numpy as np
 from stl import mesh
 import cncfclib as cf
-
+import pickle
 # def main():
 """
 This program converts stl files to paths for CNCFoamCutter.
@@ -29,13 +29,15 @@ strokes = np.flipud(np.rot90(profiles))
 ang_arr, r_arr, z_arr, v_arr = cf.transform(strokes, add_pedestal_bottom=True,add_pedestal_top=True)
 cf.plot_surf(ang_arr,z_arr,r_arr)
 
-
+print(v_arr.shape)
 res_dict = {'a_arr':ang_arr,
             'r_arr':r_arr,
             'z_arr':z_arr,
             'v_arr': v_arr}
 
-np.save('res_dict.npy', res_dict)
+with open('res_dict.pickle', 'wb') as f:
+    # Pickle the 'data' dictionary using the highest protocol available.
+    pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
 
 print('saved')
 
