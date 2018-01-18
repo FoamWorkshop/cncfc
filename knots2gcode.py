@@ -1,8 +1,8 @@
 #!/usr/bin/python
+
 __author__ = 'FoamWorkshop'
 
-'''dxf2path.py, 6.04.2016 author: Adam Narozniak
-dxf2path ptogram is a part of the CNCFCgcode generator. It automaticaly extracts cutting path from a dxf file.
+'''The program automaticaly extracts cutting path from a dxf file.
 The cutting path is split into:
 1. IO_path - in/out path begining with single knot
 2. ct_path - closed loop, begin and end in master knot position
@@ -13,10 +13,8 @@ import numpy as np
 import argparse
 from cncfclib import *
 
-
 def cross_prod(u, v):
     return u[0] * v[1] - u[1] * v[0]
-
 
 def sub_points(p1, p2):
     vect = []
@@ -30,7 +28,6 @@ def sub_points(p1, p2):
             vect.append(n - p1[i])
         return vect
     return len(p1) * [None]
-
 
 def knots2gcode(ct_pathxy, ct_pathuv, ct_path_r, name='gcode', global_header='False', subset_header='False'):
     f_name = name + '.ngc'
@@ -64,8 +61,6 @@ def knots2gcode(ct_pathxy, ct_pathuv, ct_path_r, name='gcode', global_header='Fa
         if global_header:
             f.write("M2 (program end)")
 
-
-
 def p_l_intersection(p0,vec_n,l0,l1):
     vec_l=np.subtract(l1,l0)
     param1=np.subtract(p0,l0)
@@ -80,7 +75,6 @@ def p_l_intersection_series(p0,vec_n,data1,data2):
         for i in range(len(data1)):
             l0=data1[i]
             l1=data2[i]
-        #    print l0, l1
             tmp.append(p_l_intersection(p0,vec_n,l0,l1))
         return tmp
     else:
@@ -125,6 +119,7 @@ parser.add_argument('-ir', '--input_r', nargs='+',type=str, help='R input filena
 parser.add_argument('-o', '--output', type=str, help='input filenames')
 parser.add_argument('-sh', '--subset_header', action='store_true')
 parser.add_argument('-gh', '--global_header', action='store_true')
+parser.add_argument('-sw', '--swing_cut', action='store_false')
 parser.add_argument('-cm', '--center_model', action='store_true')
 parser.add_argument('-d', '--distance', type=float, default=d, help='distance between columns')
 parser.add_argument('-dr', '--distance_ratio', type=float, default=d_rat, help='(xy-C)/d')
@@ -135,40 +130,55 @@ args = parser.parse_args()
 knt_list = args.input
 knt_list_r = args.input_r
 
-
 subset_header = args.subset_header
 global_header = args.global_header
 center_model = args.center_model
 output_f_name = args.output
 symm_stat = args.symmetry
-
+sw = args.swing_cut
 d = args.distance
 d_rat = args.distance_ratio
 
+if '.knt' in knt_list:
+    if knt_list_r:
+        knt_set_r = knt_list_r[0]
+        knt_data_r = read_data(knt_set_r, False)
+
+    if len(knt_list)==1:
+        knt_set_xy = knt_list[0]
+        knt_set_uv = knt_list[0]
+
+    elif len(knt_list)>=2:
+        knt_set_xy = knt_list[0]
+        knt_set_uv = knt_list[1]
+        print '1xy:',knt_set_xy
+        print '1uv:',knt_set_uv
+
+    if not output_f_name:
+        output_f_name='_'.join([knt_set_xy.replace('.knt',''),knt_set_uv.replace('.knt','')])
+
+        knt_data_xy = read_data(knt_set_xy, False)
+        knt_data_uv = read_data(knt_set_uv, False)
+
+if '.npy' in knt_list:
+    knt_dict = np.load(knt_list[0])
+
+    a_arr=knt_dict['a_arr']
+    r_arr=knt_dict['r_arr']
+    z_arr=knt_dict['z_arr']
+    v_arr=knt_dict['v_arr']
+
+    if sw:
+        a_arr[::2,:] = a_arr[::2,::-1]
+        r_arr[::2,:] = r_arr[::2,::-1]
+        z_arr[::2,:] = z_arr[::2,::-1]
+        v_arr[::2,:,:] = v_arr[::2,::-1,:]
+
+    # knt_data_xy = read_data(knt_set_xy, False)
+    # knt_data_uv = read_data(knt_set_uv, False)
 
 
-if knt_list_r:
-    knt_set_r = knt_list_r[0]
-    knt_data_r = read_data(knt_set_r, False)
 
-if len(knt_list)==1:
-    knt_set_xy = knt_list[0]
-    knt_set_uv = knt_list[0]
-
-elif len(knt_list)>=2:
-    knt_set_xy = knt_list[0]
-    knt_set_uv = knt_list[1]
-    print '1xy:',knt_set_xy
-    print '1uv:',knt_set_uv
-
-if not output_f_name:
-    output_f_name='_'.join([knt_set_xy.replace('.knt',''),knt_set_uv.replace('.knt','')])
-
-knt_data_xy = read_data(knt_set_xy, False)
-knt_data_uv = read_data(knt_set_uv, False)
-
-# for i, var in enumerate(knt_set_xy):
-#     print(i, var)
 
 if len(knt_data_xy)!=len(knt_data_uv):
     print('knots: {0} - {1} are not balanced ({2} - {3}). EXIT'.format(knt_set_xy, knt_set_uv, len(knt_data_xy), len(knt_data_uv)))
