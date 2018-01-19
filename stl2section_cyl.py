@@ -20,20 +20,25 @@ profiles=np.zeros_like(pos)
 for i in np.arange(np.shape(pos)[0]):
     profiles[i] = cf.cylyndrical2cartesian(pos[i])
 
-    # cf.plot_loft_paths(profiles)
-    # cf.plot_loft_paths(pos)
 
 strokes = np.flipud(np.rot90(profiles))
-# cf.plot_loft_paths(strokes)
-# print(strokes)
-ang_arr, r_arr, z_arr, v_arr = cf.transform(strokes, add_pedestal_bottom=True,add_pedestal_top=True)
-cf.plot_surf(ang_arr,z_arr,r_arr)
+#transform data from longeron nodes [xyz] to:
+#a_arr - rotation angle around the rotation axis
+#r_arr - length of a segment perpenticular to the rotation axis and corresponding lateral mesh edge
+#z_arr - corresponding z coordiantes
+#v_arr - direction vector of the coresponding lateral mesh edge
+a_arr, r_arr, z_arr, v_arr = cf.transform(strokes, add_pedestal_bottom=True,add_pedestal_top=True)
 
-print(v_arr.shape)
-res_dict = {'a_arr':ang_arr,
-            'r_arr':r_arr,
-            'z_arr':z_arr,
-            'v_arr': v_arr}
+#make a summary plots
+cf.plot_loft_paths(profiles)
+cf.plot_loft_paths(pos)
+cf.plot_surf(a_arr,z_arr,r_arr)
+
+#save calculated data per longeron
+res_dict = {'a_arr':np.rot90(a_arr, k=-1),
+            'r_arr':np.rot90(r_arr, k=-1),
+            'z_arr':np.rot90(z_arr, k=-1),
+            'v_arr':np.rot90(v_arr, k=-1)}
 
 with open('res_dict.pickle', 'wb') as f:
     # Pickle the 'data' dictionary using the highest protocol available.
