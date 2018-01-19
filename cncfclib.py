@@ -5,6 +5,15 @@ from stl import mesh
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from collections import Iterable
+
+def flatten(items):
+    """Yield items from any nested iterable; see REF."""
+    for x in items:
+        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+            yield from flatten(x)
+        else:
+            yield x
 
 def read_data(f_name, msg='False'):
 
@@ -40,19 +49,6 @@ def read_data(f_name, msg='False'):
 def write_data(f_name, data, msg='False'):
     i = 0
     print('assigned file name', f_name)
-    # if os.path.isfile(f_name):
-    #
-    #     bak_f_name = f_name + '.00.bak'
-    #
-    #     while os.path.isfile(bak_f_name):
-    #         bak_f_name = '{0}.{1:{fill}>2s}.bak'.format(
-    #             f_name, str(i), fill='0')
-    #         i += 1
-    #
-    #     os.rename(f_name, bak_f_name)
-    #
-    #     if msg:
-    #         print("{0:<24} -> {1}".format(f_name, bak_f_name))
 
     with open(f_name, 'w') as f:
         for line in data:
@@ -62,6 +58,64 @@ def write_data(f_name, data, msg='False'):
 
     if msg:
         print("{0:<24} <- {1} knots".format(f_name, len(data)))
+
+def knots2gcode(ct_pathxy, ct_pathuv, ct_path_r, name='gcode', global_header='False', subset_header='False'):
+    f_name = name + '.ngc'
+    with open(f_name, 'w') as f:
+        if subset_header:
+            f.write("o<{0}> sub\n".format(name))
+
+        if global_header:
+
+            f.write("G21 (Units in millimeters)\n")
+            f.write("G90 (Absolute programming)\n")
+            f.write("G40 (Cancel radius comp.)\n")
+            f.write("G49 (Cancel length comp.)\n")
+            f.write("F200 (Feed rate)\n")
+    ##############################################
+        f.write("\n(-----CT PATH-from: {0}-----)\n".format(name))
+        if ct_path_r:
+            f.write('G1 B{0:8.3f}\n'.format(ct_path_r[0][0]))
+            for varxy, varuv, var_r in zip(ct_pathxy, ct_pathuv, ct_path_r):
+                f.write('G1 X{0:8.3f} Y{1:8.3f} U{2:8.3f} V{3:8.3f} B{4:8.3f}\n'.format(
+                    varxy[0], varxy[1], varuv[0], varuv[1], var_r[0]))
+        else:
+            for varxy, varuv in zip(ct_pathxy, ct_pathuv):
+                f.write('G1 X{0:8.3f} Y{1:8.3f} U{2:8.3f} V{3:8.3f}\n'.format(
+                    varxy[0], varxy[1], varuv[0], varuv[1]))
+    ##############################################
+        if subset_header:
+            f.write("\no<{0}> endsub\n".format(name))
+            f.write("M2 (program end)")
+
+        if global_header:
+            f.write("M2 (program end)")
+
+def savegcode(data, name='gcode', global_header=False, subset_header=False):
+
+    f_name = name + '.ngc'
+    with open(f_name, 'w') as f:
+        if subset_header:
+            f.write("o<{0}> sub\n".format(name))
+
+        if global_header:
+
+            f.write("G21 (Units in millimeters)\n")
+            f.write("G90 (Absolute programming)\n")
+            f.write("G40 (Cancel radius comp.)\n")
+            f.write("G49 (Cancel length comp.)\n")
+            f.write("F200 (Feed rate)\n")
+    ##############################################
+        f.writelines(flatten(data))
+        # f.writelines(data[3])
+    ##############################################
+        if subset_header:
+            f.write("\no<{0}> endsub\n".format(name))
+            f.write("M2 (program end)")
+
+        if global_header:
+            f.write("M2 (program end)")
+
 
 def v2v_dist(v1, v2):
     return np.linalg.norm(v2-v1)
@@ -316,10 +370,20 @@ def tri_plane_intersect_check(L,D0,n0):
 
 def plot_loft_paths(data):
     fig = plt.figure()
+    plt.ion()
     ax = fig.gca(projection='3d')
     for i in np.arange(np.shape(data)[1]):
         # ax.plot(spars[:,0],spars[:,1],spars[:,2],'x-')
         ax.plot(data[:,i,0],data[:,i,1],data[:,i,2],'x-')
+    plt.show()
+
+def plot_surf(x, y, z):
+    fig = plt.figure()
+    plt.ion()
+    ax = fig.gca(projection='3d')
+    for s1, s2, s3 in zip(x,y,z):
+        # ax.plot(spars[:,0],spars[:,1],spars[:,2],'x-')
+        ax.plot(s1, s2, s3,'x-')
     plt.show()
 
 def angl_conv(x):
@@ -407,7 +471,7 @@ def angle_atan2(P1,P2,P3):
 
     return np.vstack(dangl)
 
-def coords2file(name,coords_XU, coords_YV):
+def coords2file(name, coords_XU, coords_YV):
     pref_1='xyuv_'
     pref_2='r_'
 
@@ -425,6 +489,17 @@ def Rcoords2file(name,coords_R):
     for R in coords_R:
         f.write('{0:.3f}\n'.format(R))
     f.close()
+
+def coords2gcode(x_arr,y_arr,u_arr,v_arr,b_arr):
+    # pref_1='xyuv_'
+    # pref_2='r_'
+    # if !b:
+    #     b_arr = np.zeros_like(x)
+    gcode=[]
+    for row in np.column_stack((x_arr, y_arr, u_arr, v_arr, b_arr)):
+        gcode.append('G1 X{0[0]:8.3f} Y{0[1]:8.3f} U{0[2]:8.3f} V{0[3]:8.3f} B{0[4]:8.3f}\n'.format(row))
+    return gcode
+
 
 def list_entities(dxf):
     dxf_summary = [shape.dxftype for shape in dxf.entities]
@@ -801,36 +876,6 @@ def transform(spar_data0, add_pedestal_top=False, add_pedestal_bottom=False):
     z_arr = np.roll(np.rot90(np.array(buff_2PS )),-1, axis=1)[:,:,2]
     v_arr = np.roll(np.rot90(np.array(buff_2v )),-1, axis=1)
 
-
-    if add_pedestal_bottom:
-        n = z_arr.shape[1]
-        r = 50
-        h = np.array([4, 3, 2, 0])
-        p_r_arr = np.vstack([r_arr[-1].T, np.ones((2, n))*r])
-        z = np.cumsum(h)
-        p_z_arr = np.rot90(np.vstack([z]*n))
-        angle_arr = np.vstack([angle_arr,[angle_arr[-1]]*n])
-        r_arr = np.vstack([r_arr, p_r_arr])
-        z_arr = np.vstack([z_arr+z[-1], p_z_arr])
-        v_arr = np.vstack([v_arr,[v_arr[-1]]*n])
-
-    if add_pedestal_bottom:
-        n = z_arr.shape[1]
-        r = 50
-        h = np.array([4, 3, 2, 0])
-        p_r_arr = np.vstack([np.ones((2, n))*r, r_arr[0].T])
-        z = np.cumsum(np.flipud(h))
-        p_z_arr = np.rot90(np.vstack([z]*n))
-        angle_arr = np.vstack([[angle_arr[-1]]*n, angle_arr])
-        r_arr = np.vstack([p_r_arr, r_arr])
-        z_arr = np.vstack([z_arr, p_z_arr+z[0]])
-        v_arr = np.vstack([[v_arr[-1]]*n, v_arr])
-
-        # print(angle_arr,
-        # r_arr,
-        # z_arr,
-        # v_arr)
-
     return (angle_arr,
             r_arr,
             z_arr,
@@ -855,8 +900,6 @@ def add_pedestal(pos, add_pedestal_top=True, add_pedestal_bottom=True):
         p_arr_2[:,:,2] += np.vstack(z1)
         p_arr_2[-1,:,0] = r
         pos=np.vstack([pos, p_arr_2])
-
-
     return pos
 
 
