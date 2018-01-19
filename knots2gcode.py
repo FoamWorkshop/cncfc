@@ -12,10 +12,7 @@ import dxfgrabber
 import numpy as np
 import argparse
 import pickle
-from cncfclib import *
-
-def cross_prod(u, v):
-    return u[0] * v[1] - u[1] * v[0]
+import cncfclib as cf
 
 def sub_points(p1, p2):
     vect = []
@@ -29,38 +26,6 @@ def sub_points(p1, p2):
             vect.append(n - p1[i])
         return vect
     return len(p1) * [None]
-
-def knots2gcode(ct_pathxy, ct_pathuv, ct_path_r, name='gcode', global_header='False', subset_header='False'):
-    f_name = name + '.ngc'
-    with open(f_name, 'w') as f:
-        if subset_header:
-            f.write("o<{0}> sub\n".format(name))
-
-        if global_header:
-
-            f.write("G21 (Units in millimeters)\n")
-            f.write("G90 (Absolute programming)\n")
-            f.write("G40 (Cancel radius comp.)\n")
-            f.write("G49 (Cancel length comp.)\n")
-            f.write("F200 (Feed rate)\n")
-    ##############################################
-        f.write("\n(-----CT PATH-from: {0}-----)\n".format(name))
-        if ct_path_r:
-            f.write('G1 B{0:8.3f}\n'.format(ct_path_r[0][0]))
-            for varxy, varuv, var_r in zip(ct_pathxy, ct_pathuv, ct_path_r):
-                f.write('G1 X{0:8.3f} Y{1:8.3f} U{2:8.3f} V{3:8.3f} B{4:8.3f}\n'.format(
-                    varxy[0], varxy[1], varuv[0], varuv[1], var_r[0]))
-        else:
-            for varxy, varuv in zip(ct_pathxy, ct_pathuv):
-                f.write('G1 X{0:8.3f} Y{1:8.3f} U{2:8.3f} V{3:8.3f}\n'.format(
-                    varxy[0], varxy[1], varuv[0], varuv[1]))
-    ##############################################
-        if subset_header:
-            f.write("\no<{0}> endsub\n".format(name))
-            f.write("M2 (program end)")
-
-        if global_header:
-            f.write("M2 (program end)")
 
 def p_l_intersection(p0,vec_n,l0,l1):
     vec_l=np.subtract(l1,l0)
@@ -120,7 +85,7 @@ parser.add_argument('-ir', '--input_r', nargs='+',type=str, help='R input filena
 parser.add_argument('-o', '--output', type=str, help='input filenames')
 parser.add_argument('-sh', '--subset_header', action='store_true')
 parser.add_argument('-gh', '--global_header', action='store_true')
-parser.add_argument('-sw', '--swing_cut', action='store_false')
+parser.add_argument('-sw', '--swing_cut', action='store_true')
 parser.add_argument('-cm', '--center_model', action='store_true')
 parser.add_argument('-d', '--distance', type=float, default=d, help='distance between columns')
 parser.add_argument('-dr', '--distance_ratio', type=float, default=d_rat, help='(xy-C)/d')
@@ -162,22 +127,39 @@ if '.knt' in knt_list:
         knt_data_uv = read_data(knt_set_uv, False)
 
 if '.pickle' in knt_list[0]:
-    print('found pickle')
     with open(knt_list[0], 'rb') as f:
         knt_dict = pickle.load(f)
+        print('loaded pickle')
 
     # print(knt_dict.keys())
     a_arr=knt_dict['a_arr']
     r_arr=knt_dict['r_arr']
     z_arr=knt_dict['z_arr']
     v_arr=knt_dict['v_arr']
+    # print(z_arr)
 
-    # if sw:
-    print('modifed for swing cutting')
-    a_arr[1::2,:] = a_arr[1::2,::-1]
-    r_arr[1::2,:] = r_arr[1::2,::-1]
-    z_arr[1::2,:] = z_arr[1::2,::-1]
-    v_arr[1::2,:,:] = v_arr[1::2,::-1,:]
+    if sw:
+        print('modifed for swing cutting')
+        a_arr[1::2,:] = a_arr[1::2,::-1]
+        r_arr[1::2,:] = r_arr[1::2,::-1]
+        z_arr[1::2,:] = z_arr[1::2,::-1]
+        v_arr[1::2,:,:] = v_arr[1::2,::-1,:]
+
+    prefix=''
+    suffix=''
+    gc_model=[]
+
+    # print(z_arr)
+    for i, (x, y, b) in enumerate(zip(r_arr, z_arr, a_arr)):
+        gc_model.append('(---cut {0}---)\n'.format(i))
+        gc_model.append(prefix)
+        gc_model.append(cf.coords2gcode(x,y,x,y,b))
+        gc_model.append(suffix)
+    # print(gc_model)
+    cf.savegcode(gc_model, name='fuselage', subset_header=True)
+    print('saved gcode')
+
+
 
     # knt_data_xy = read_data(knt_set_xy, False)
     # knt_data_uv = read_data(knt_set_uv, False)
