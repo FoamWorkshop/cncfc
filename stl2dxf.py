@@ -83,8 +83,9 @@ def make_chains(section_list):
 
 
 mesh = mesh.Mesh.from_file('fuselage.stl')
-dim_max = mesh.max_
-dim_min = mesh.min_
+
+dim_max = np.round(mesh.max_,3)
+dim_min = np.round(mesh.min_,3)
 
 sections_list = [([1,0,0], dim_min[0], dim_max[0], 10),
                  ([0,1,0], dim_min[1], dim_max[1], 1),
@@ -107,19 +108,20 @@ for i, (norm, n_min, n_max, n_sect) in enumerate(sections_list):
     #
     for i, (n0, D0) in enumerate(zip(cp_n0_arr, cp_D0_arr)):
         intersect_list = []
-        for tri in mesh.vectors:
+        for tri_list in mesh.vectors:
             #ABC
-            P1 = np.vstack(tri).astype(float)
-            #CAB
-            P2 = np.roll(P1, 1, axis=0)
+            tri = np.round(np.vstack(tri_list).astype(float),6)
+
             # print(ABC)
             # print(BCA)
-            intersect = fc.tri_plane_intersect_check(P1, P2, D0, n0)
-            if np.size(intersect):
-                print(intersect)
-                intersect_list.append(intersect)
+            # intersect = fc.tri_plane_intersect_check(P1, P2, D0, n0)
+            intersect = fc.tri_plane_intersect(tri, D0, n0)
+            if len(intersect)==2:
+                # print(tri)
+                # print(intersect)
+                intersect_list.append(np.vstack(intersect))
     # #
-        print('profile: {}; sections: {}'.format(i,len(intersect_list)))
+        # print('profile: {}; sections: {}'.format(i,len(intersect_list)))
         section_list.append(intersect_list)
     section_plane_list.append(section_list)
 
@@ -155,7 +157,7 @@ for section_list in section_plane_list:
         p_arr =  np.array(section)
         for row in p_arr:
             if row.shape[0]==2:
-                print(row)
+                # print(row)
                 x = row[:,0]
                 y = row[:,1]
                 z = row[:,2]
