@@ -1,33 +1,11 @@
 import numpy as np
 from stl import mesh
+import cncfclib as fc
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 
-def v2v_dist(v1, v2):
-    return np.linalg.norm(v2-v1)
-
-def point_plane_dist(P1, D0, n0):
-    v1 = P1-D0
-    n_norm = n0/np.linalg.norm(n0)
-    return np.dot(n_norm,v1)
-
-def line_plane_intersect(L, D0, n0):
-    L0 = L[:3]
-    L1 = L[3:]
-    l = (L1-L0)
-    n_norm = n0/np.linalg.norm(n0)
-
-    # check if line is perpenticular to the normal
-    # if not, calculate intersection
-    if np.dot(l, n_norm)==0:
-        res=np.array([np.NaN]*3)
-    else:
-        d = np.dot((D0 - L0),n_norm)/np.dot(l, n_norm)
-        res=L0 + d * l
-
-    return res
 
 def find3dpoint(p, pf):
     '''function searches for /pf/ vector in an array of vectors /p/
@@ -71,18 +49,6 @@ def make_loop(b):
         idx_col = next_idx_col
     return p_out
 
-def tri_plane_intersect_check(L,D0,n0):
-    P1 = L[:,:3]
-    P2 = L[:,3:]
-    P1_dist=np.apply_along_axis(point_plane_dist,1,P1,D0,n0)
-    P2_dist=np.apply_along_axis(point_plane_dist,1,P2,D0,n0)
-    p=np.where(P1_dist*P2_dist<=0)[0]
-    cross_vect=np.array([])
-    if np.size(p):
-        cross_vect=np.apply_along_axis(line_plane_intersect,1,L[p,:],D0,n0)
-
-    # print(cross_vect)
-    return cross_vect
 def remove_mid_nodes(arr):
     p=arr
     print(p)
@@ -115,54 +81,66 @@ def make_chains(section_list):
     return chain_list
 
 # B# print(point_plane_dist(P1, D0, n0))
-n_sect=1
-cp_n0_arr = np.array([[0,0,1]]*n_sect)
-cp_D0_arr = np.array([[0,0,1]]*n_sect) * np.vstack(np.linspace(60,61,n_sect))
-
-mesh = mesh.Mesh.from_file('fuselage_rot.stl')
-
+# n_sect=20
+# cp_n0_arr = np.array([[1,0,0]]*n_sect)
+# cp_D0_arr = np.array([[1,0,0]]*n_sect) *
+mesh = mesh.Mesh.from_file('fuselage.stl')
+n_sect=2
+cp_n0_arr = np.tile([0,0,1],(n_sect,1))
+cp_D0_arr = np.tile([0,0,1],(n_sect,1)) * np.linspace(0,250,n_sect)[:,np.newaxis]
+# print(cp_D0_arr)
+# print(cp_D0_arr)
+#
 section_list=[]
 print('slicing the model')
-
+#
 for i, (n0, D0) in enumerate(zip(cp_n0_arr, cp_D0_arr)):
     intersect_list = []
     for tri in mesh.vectors:
-        ABC = np.round(np.vstack(tri).astype(float), decimals=5)
+        #ABC
+        P1 = np.vstack(tri).astype(float)
+        #CAB
+        P2 = np.roll(P1, 1, axis=0)
         # print(ABC)
-        L=np.hstack([ABC,np.roll(ABC, -1, axis=0)])
-        intersect=tri_plane_intersect_check(L,D0,n0)
-        if np.size(intersect):
-            intersect_list.append(intersect)
+        # print(BCA)
+        intersect = fc.tri_plane_intersect_check(P1, P2, D0, n0)
 
-    print('profile: {}; sections: {}'.format(i,len(intersect_list)))
-    section_list.append(intersect_list)
-
-# print(section_list)
-fig = plt.figure()
-ax = fig.gca(projection='3d')
-
-for i, section in enumerate(section_list):
-    p_arr =  np.array(section)
-    print(p_arr.shape[0])
-    print('section: ',i)
-    if p_arr.shape[0]>3:
-        prof=make_loop(p_arr)
-        profi=remove_mid_nodes(prof)
-        # print(prof)
-        x = prof[:,0]
-        y = prof[:,1]
-        z = prof[:,2]
-        ax.plot(x, y, z,'s-')
-        x = profi[:,0]
-        y = profi[:,1]
-        z = profi[:,2]
-        ax.plot(x, y, z,'o')
-        # ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
-
-        # test_p_arr=np.vstack(p_arr)
-        # print(test_p_arr)
-        # x = test_p_arr[:,0]
-        # y = test_p_arr[:,1]
-        # z = test_p_arr[:,2]
-        # ax.plot(x, y, z,'x')
-plt.show()
+#         if np.size(intersect):
+#             # print(intersect)
+#             intersect_list.append(intersect)
+# #
+#     print('profile: {}; sections: {}'.format(i,len(intersect_list)))
+#     section_list.append(intersect_list)
+#
+# # print(section_list[0])
+#
+# fig = plt.figure()
+# ax = fig.gca(projection='3d')
+#
+# for i, section in enumerate(section_list):
+#     p_arr =  np.array(section)
+#     # print(p_arr)
+#     # print(p_arr.shape[0])
+#     # print('section: ',i)
+#     if p_arr.shape[0]>3:
+#     #     # prof=make_loop(p_arr)
+#         # profi=remove_mid_nodes(prof)
+#         # print(prof)
+#         x = p_arr[:,0,0]
+#         y = p_arr[:,0,1]
+#         z = p_arr[:,0,2]
+#         # print(z)
+#         ax.plot(x, y, z,'s-')
+#         # x = profi[:,0]
+#         # y = profi[:,1]
+#         # z = profi[:,2]
+#         # ax.plot(x, y, z,'o')
+#         # ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
+#
+#         # test_p_arr=np.vstack(p_arr)
+#         # print(test_p_arr)
+#         # x = test_p_arr[:,0]
+#         # y = test_p_arr[:,1]
+#         # z = test_p_arr[:,2]
+#         # ax.plot(x, y, z,'x')
+# plt.show()
