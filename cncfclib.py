@@ -204,6 +204,7 @@ def plot_section(section):
             # ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
     plt.show()
 
+
 def tri_plane_intersect_check(P1,P2,D0,n0):
     # P1 = L[:,:3]
     # P2 = L[:,3:]
@@ -223,8 +224,61 @@ def tri_plane_intersect_check(P1,P2,D0,n0):
         cv = cross_vect[valid_idx]
     else:
         cv=np.array([])
-
     return cv
+
+def line_plane_intersect(L0, L1, D0, n0):
+    """Calculate 3D line-plane intersection point
+    Parameters:
+        L0, L1 - points on the line
+        D0 - point on the plane
+        n0 - plane normal
+    Returns:
+        P - intersetion point. If the line is parallel to the plane,
+        function returns [inf, inf, inf]
+    """
+    l = (L1 - L0)
+    n_norm = n0/np.linalg.norm(n0)
+    dot_prod = np.dot(l, n_norm)
+
+    if dot_prod == 0:
+        P = np.array([np.inf,np.inf,np.inf])
+    else:
+        d = np.dot((D0 - L0),n_norm)/dot_prod
+        P = L0 + d * l
+    return P
+
+def tri_plane_intersect(tri0, D0, n0):
+    """Calculate 3D triangle-plane intersection segment
+    Parameters:
+        tri0 - array of the triangle vartice coordinates
+            [[ax,ay,az],[bx,by,bz],[cx,cy,cz]]
+        D0 - point on the plane
+        n0 - plane normal
+
+    Returns:
+        [S1, S2] - a list of intersection point coordinates (arrays)
+        defining the intersection segment, if no intersection occures,
+        an empty list is returned
+    """
+    tri1 = np.roll(tri0, 1, axis=0)
+    tri0_dist=np.apply_along_axis(point_plane_dist,1,tri0,D0,n0)
+    tri1_dist=np.apply_along_axis(point_plane_dist,1,tri1,D0,n0)
+    idx = np.where(tri0_dist*tri1_dist<=0)[0]
+    #
+    S_list=[]
+    if np.size(idx):
+        for L0, L1 in zip(tri0[idx], tri1[idx]):
+            S = line_plane_intersect(L0, L1, D0, n0)
+
+            if np.isinf(S[0]):
+                S_list = [L0,L1]
+                break
+            else:
+                S_list.append(S)
+
+    return S_list
+
+
 
 def v2v_dist(v1, v2):
     return np.linalg.norm(v2-v1)
@@ -241,23 +295,21 @@ def line_plane_intersect_d(L0, L1, D0, n0):
     d = np.dot((D0 - L0),n_norm)/np.dot(l_norm, n_norm)
     return d
 
-def line_plane_intersect(L, D0, n0, skip_parallel=False):
-    L0 = L[:3]
-    L1 = L[3:]
-    l = (L1-L0)
-    n_norm = n0/np.linalg.norm(n0)
-    dot_prod = np.dot(l, n_norm)
+# def line_plane_intersect(L, D0, n0):
+#     L0 = L[:3]
+#     L1 = L[3:]
+#     l = (L1 - L0)
+#     n_norm = n0/np.linalg.norm(n0)
+#     dot_prod = np.dot(l, n_norm)
+#
+#     if dot_prod !=0:
+#         d = np.dot((D0 - L0),n_norm)/dot_prod
+#         res = L0 + d * l
+#     else:
+#         res = np.full((1,3),np.inf)
+#     return res
 
-    if dot_prod !=0:
-        d = np.dot((D0 - L0),n_norm)/dot_prod
-        res = L0 + d * l
-    else:
-        if skip_parallel:
-            res = np.vstack([L0,L1])
-        else:
-            res = np.full((1,3),np.nan)
-    # print(res)
-    return res
+
 
 def cartesian2cylyndrical(data_points,sections):
     # p=p.round(2)
@@ -926,6 +978,76 @@ def add_pedestal(pos, add_pedestal_top=True, add_pedestal_bottom=True):
         pos=np.vstack([pos, p_arr_2])
     return pos
 
+def find3dpoint(p, pf):
+    '''function searches for /pf/ vector in an array of vectors /p/
+       and returns its top level position index'''
+
+    if len(p.shape)>2:
+        pool_A=p[:,0]
+        pool_B=p[:,1]
+        idx_row0=np.where(np.product(pool_A==pf,axis=1))[0]
+        idx_row1=np.where(np.product(pool_B==pf,axis=1))[0]
+    else:
+        pool_A=p
+        idx_row0=np.where(np.product(pool_A==pf,axis=1))[0]
+        idx_row1=[]
+    return np.hstack([idx_row0, idx_row1]).astype(np.int)
+
+
+def make_loop(b):
+    '''function returns an array of subsequent points from an unsorted
+       array of contour sections /b/. An example of the contour sections array:
+    p=np.array([[[2, 4,	0], [1,	1, 0]],
+                [[1, 2,	0],	[4,	4, 0]],
+                [[2, 4, 0], [4, 4, 0]],
+                [[1, 1,	0],	[1,	2, 0]]])
+    '''
+    p=b.astype(np.float)
+    p=p.round(4)
+    p_out = np.zeros_like(p[:,0])
+    idx_row = 0
+    idx_col = 0
+
+    p_first = p[idx_row, idx_col]
+    p_out[0] = p_first
+    for i in np.arange(0, p.shape[0]):
+        next_idx_row = np.setdiff1d(find3dpoint(p, p_first), idx_row)[0]
+        next_idx_col = find3dpoint(p[next_idx_row], p_first)
+        el_next=p[ next_idx_row, next_idx_col^1]
+        p_out[i] = el_next
+        p_first = el_next
+        idx_row = next_idx_row
+        idx_col = next_idx_col
+    return p_out
+
+def remove_mid_nodes(arr):
+    p=arr
+    print(p)
+    while 1:
+        vA=np.roll(p, -1, axis=0)-p
+        vB=np.roll(p, -1, axis=0)-np.roll(p, -2, axis=0)
+        c=np.linalg.norm(np.cross(vA,vB),axis=1)
+        idx=np.where(c<2)[0]
+        if np.size(idx):
+            print(p)
+            print(c[idx])
+            print(np.size(p[:,0])-1)
+            idxi=np.where(idx>=np.size(p[:,0])-1)[0]
+            if idxi:
+                idx[idxi]=0
+            p=np.delete(p,idx+1,0)
+        else:
+            break
+    return p
+
+def make_chains(section_list):
+    chain_list
+    p_arr =  np.array(section)
+    print(p_arr.shape[0])
+    print('section: ',i)
+    if p_arr.shape[0]>3:
+        prof=make_loop(p_arr)
+    return chain_list
 
 
 
