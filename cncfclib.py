@@ -136,8 +136,10 @@ def line_plane_intersect(L, D0, n0):
     L0 = L[:3]
     L1 = L[3:]
     l = (L1-L0)
-    n_norm = n0/np.linalg.norm(n0)
-    d = np.dot((D0 - L0),n_norm)/np.dot(l, n_norm)
+    if np.linalg.norm(n0)==0:
+        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+    n_norm = n0 / np.linalg.norm(n0)
+    d = np.dot((D0 - L0),n_norm) / np.dot(l, n_norm)
     return L0 + d * l
 
 def find3dpoint(p, pf):
@@ -202,16 +204,27 @@ def plot_section(section):
             # ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
     plt.show()
 
-def tri_plane_intersect_check(L,D0,n0):
-    P1 = L[:,:3]
-    P2 = L[:,3:]
+def tri_plane_intersect_check(P1,P2,D0,n0):
+    # P1 = L[:,:3]
+    # P2 = L[:,3:]
     P1_dist=np.apply_along_axis(point_plane_dist,1,P1,D0,n0)
     P2_dist=np.apply_along_axis(point_plane_dist,1,P2,D0,n0)
-    p=np.where(P1_dist*P2_dist<=0)[0]
-    cross_vect=np.array([])
-    if np.size(p):
-        cross_vect=np.apply_along_axis(line_plane_intersect,1,L[p,:],D0,n0)
-    return cross_vect
+    p_idx=np.where(P1_dist*P2_dist<=0)[0]
+    #
+    if np.size(p_idx) :
+        # for idx in p_idx:
+            # line_plane_intersect(P1, P2, D0, dn)
+        cross_vect=np.apply_along_axis(line_plane_intersect,1,np.column_stack((P1,P2))[p_idx],D0,n0)
+        ###rid of nans!!!!!
+        valid_idx = np.where(np.isfinite(cross_vect[:,0]))[0]
+        # if np.size(valid_idx):
+            # print('00000000000000000000000000000',valid_idx)
+            # print(cross_vect)
+        cv = cross_vect[valid_idx]
+    else:
+        cv=np.array([])
+
+    return cv
 
 def v2v_dist(v1, v2):
     return np.linalg.norm(v2-v1)
@@ -228,13 +241,24 @@ def line_plane_intersect_d(L0, L1, D0, n0):
     d = np.dot((D0 - L0),n_norm)/np.dot(l_norm, n_norm)
     return d
 
-def line_plane_intersect(L, D0, n0):
+def line_plane_intersect(L, D0, n0, skip_parallel=False):
     L0 = L[:3]
     L1 = L[3:]
     l = (L1-L0)
     n_norm = n0/np.linalg.norm(n0)
-    d = np.dot((D0 - L0),n_norm)/np.dot(l, n_norm)
-    return L0 + d * l
+    dot_prod = np.dot(l, n_norm)
+
+    if dot_prod !=0:
+        d = np.dot((D0 - L0),n_norm)/dot_prod
+        res = L0 + d * l
+    else:
+        if skip_parallel:
+            res = np.vstack([L0,L1])
+        else:
+            res = np.full((1,3),np.nan)
+    # print(res)
+    return res
+
 def cartesian2cylyndrical(data_points,sections):
     # p=p.round(2)
     p=np.unique(data_points,axis=0)
@@ -357,20 +381,20 @@ def plot_section(section):
             # ax.plot(x[[0,-1]], y[[0,-1]], z[[0,-1]], 'o-')
     plt.show()
 
-def tri_plane_intersect_check(L,D0,n0):
-    P1 = L[:,:3]
-    P2 = L[:,3:]
-    P1_dist=np.apply_along_axis(point_plane_dist,1,P1,D0,n0)
-    P2_dist=np.apply_along_axis(point_plane_dist,1,P2,D0,n0)
-    p=np.where(P1_dist*P2_dist<=0)[0]
-    cross_vect=np.array([])
-    if p.size:
-        cross_vect=np.apply_along_axis(line_plane_intersect,1,L[p,:],D0,n0)
-    return cross_vect
+# def tri_plane_intersect_check(L,D0,n0):
+#     P1 = L[:,:3]
+#     P2 = L[:,3:]
+#     P1_dist=np.apply_along_axis(point_plane_dist,1,P1,D0,n0)
+#     P2_dist=np.apply_along_axis(point_plane_dist,1,P2,D0,n0)
+#     p=np.where(P1_dist*P2_dist<=0)[0]
+#     cross_vect=np.array([])
+#     if p.size:
+#         cross_vect=np.apply_along_axis(line_plane_intersect,1,L[p,:],D0,n0)
+#     return cross_vect
 
 def plot_loft_paths(data):
     fig = plt.figure()
-    plt.ion()
+    # plt.ion()
     ax = fig.gca(projection='3d')
     for i in np.arange(np.shape(data)[1]):
         # ax.plot(spars[:,0],spars[:,1],spars[:,2],'x-')
@@ -379,7 +403,7 @@ def plot_loft_paths(data):
 
 def plot_surf(x, y, z):
     fig = plt.figure()
-    plt.ion()
+    # plt.ion()
     ax = fig.gca(projection='3d')
     for s1, s2, s3 in zip(x,y,z):
         # ax.plot(spars[:,0],spars[:,1],spars[:,2],'x-')
