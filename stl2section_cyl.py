@@ -2,18 +2,28 @@ import numpy as np
 from stl import mesh
 import cncfclib as cf
 import pickle
+import argparse
 # def main():
 """
 This program converts stl files to paths for CNCFoamCutter.
 slender models eg. fusselage modeled in OpenVSP.
+The rotation axis must be along Z.
+Parameters:
+Returns:
+TODO:
+autodetection of the Num_W
+nonblocking plots
 """
-
+Num_W = 17
 mesh = mesh.Mesh.from_file('fuselage.stl')
+#rotate mesh since by default the rotation axis is along X
 mesh.rotate([0,1,0],np.pi/2)
 
 v_arr = np.round(np.vstack(mesh.vectors).astype(float), decimals=1)
+
 #pos = [r, th, z] sectionwise
-pos = cf.cartesian2cylyndrical(v_arr,17)
+pos = cf.cartesian2cylyndrical(v_arr, Num_W)
+#add pedestal mesh
 pos = cf.add_pedestal(pos)
 
 profiles=np.zeros_like(pos)
@@ -34,12 +44,13 @@ cf.plot_loft_paths(profiles)
 cf.plot_loft_paths(pos)
 cf.plot_surf(a_arr,z_arr,r_arr)
 
-#save calculated data per longeron
+#collect data to the dictionary longeron wise
 res_dict = {'a_arr':np.rot90(a_arr, k=-1),
             'r_arr':np.rot90(r_arr, k=-1),
             'z_arr':np.rot90(z_arr, k=-1),
             'v_arr':np.rot90(v_arr, k=-1)}
 
+#save result dictionary
 with open('res_dict.pickle', 'wb') as f:
     # Pickle the 'data' dictionary using the highest protocol available.
     pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
