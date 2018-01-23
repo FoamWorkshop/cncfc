@@ -13,11 +13,11 @@ def prog(args):
     This program converts stl files to paths for CNCFoamCutter.
     slender models eg. fusselage modeled in OpenVSP.
     The rotation axis must be along Z.
-    Parameters:
+    Parameters: a tuple: (stl input fname, output dictionary fname,
+        list of pedestal params: [radius, h1,h2], list of the section splits,
+        number of longitudinal sections)
     Returns:
-    TODO:
-    autodetection of the Num_W
-    nonblocking plots
+        a tesult dictionary
     """
     i_fname, o_fname, pedestal_params, split_list, Num_W = args
     mesh = stl.mesh.Mesh.from_file(i_fname)
@@ -79,17 +79,15 @@ def prog(args):
 
 if __name__ == "__main__":
 
-    parser = argparse.ArgumentParser(description='This program converts stl files to paths for CNCFoamCutter. slender models eg. fusselage modeled in OpenVSP. The rotation axis must be along Z.')
+    parser = argparse.ArgumentParser(description='This program converts stl mesh defined in cartesian coord [XYZ] to an ordered set of nodes in cylindrycal coord [rot angle, radius, z coord, ege slope]. The STL model must be oriented so its longitudinal axis is X')
+    # This program converts stl files to \
+    # paths for CNCFoamCutter. slender models eg. fusselage modeled in OpenVSP. \
+    # The rotation axis must be along Z.')
     parser.add_argument('-i',  '--input', type=str, required=True, help='input stl file name')
     parser.add_argument('-o', '--output', type=str, help='output pickle database')
-    # parser.add_argument('-sh', '--subset_header', action='store_true')
-    # parser.add_argument('-gh', '--global_header', action='store_true')
-    # parser.add_argument('-sw', '--swing_cut', action='store_true')
-    # parser.add_argument('-cm', '--center_model', action='store_true')
     parser.add_argument('-p', '--pedestal_params', type=float, nargs='+', default=[35, 5, 5], help='pedestal dimensions')
     parser.add_argument('-s', '--sections', type = float, nargs='+', default=[0, 1000], help='location of the split sections')
     parser.add_argument('-w', '--num_w'   , type = int, default=17, help='number of longitudinal splits')
-    #parser.add_argument('-symm', '--symmetry', action='store_true')
 
     args = parser.parse_args()
 
