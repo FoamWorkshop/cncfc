@@ -53,11 +53,8 @@ import argparse
 import sys
 import dxfgrabber
 import numpy as np
+import pickle
 from cncfclib import *
-
-
-def cross_prod(u, v):
-    return u[0] * v[1] - u[1] * v[0]
 
 
 def sub_points(p1, p2):
@@ -130,7 +127,6 @@ def list_entities(dxf):
 
 def knots_dict(knots_list):
     return [[i, var] for i, var in enumerate(list(set(knots_list)))]
-
 
 def elements_coords2knots(el_list, kt_list):
     el_kt_list = []
@@ -234,7 +230,7 @@ def cw_order(seg1, seg2):
     common_el = [x for x in list(set(seg1) & set(seg2))]
     u = sub_points(common_el, list(set(seg1) - set(common_el)))
     v = sub_points(common_el, list(set(seg2) - set(common_el)))
-    if cross_prod(u, v) > 0:
+    if np.linalg.norm(np.cross(u, v)) > 0:
         return False
     else:
         return True
@@ -480,22 +476,93 @@ if 1:
                             # print(z)
                             section = z.tolist()
                         updated_section_list.append(section)
-                    #flatten the list of lists
+#flatten the list of lists
                     section_list = [var for sublist in updated_section_list for var in sublist]
-#EQUIVALENCE SECTION
 #SUMMARY
                 print('{0:11}: {1:4d}\n'.format('i/o  seg.', len(section_list)-1)),
                 print('{0:11}: {1:4d}\n'.format('loop seg.', len(ct_path)))
                 print('{0}'.format('-' * 80))
 #SUMMARY
+                # print(section_list)
+                # print(section_list[::-1])
+                # print(ct_path)
+                # print(sorted_knots)
+
+
                 if '1' in output_path:
                     i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
                     knots2file_1(i_file_name, section_list, z_coord)
+                    size = len(section_list)
+                    a_arr=np.zeros((1,size,1))
+                    r_arr=np.zeros((1,size,1))
+                    z_arr=np.zeros((1,size,1))
+                    v_arr=np.zeros((1,size,2))
+
+                    for i, var in enumerate(section_list):
+                        a_arr[0,i,0]=var[0]
+                        r_arr[0,i,0]=var[1]
+                        z_arr[0,i,0]=0
+                        v_arr[0,i,:]=np.array([1,0])
+
+                    res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
+                                'r_arr':np.rot90(r_arr, k=-1), #radius R/X
+                                'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
+                                'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
+
+                    with open(i_file_name, 'wb') as f:
+# Pickle the 'data' dictionary using the highest protocol available.
+                        pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
 
                 if '3' in output_path:
                     o_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '3', 'knt')
                     knots2file_1(o_file_name, section_list[::-1], z_coord)
+                    size = len(section_list)
+                    a_arr=np.zeros((1,size,1))
+                    r_arr=np.zeros((1,size,1))
+                    z_arr=np.zeros((1,size,1))
+                    v_arr=np.zeros((1,size,2))
+                    for i, var in enumerate(section_list):
+                        a_arr[0,i,0]=var[0]
+                        r_arr[0,i,0]=var[1]
+                        z_arr[0,i,0]=0
+                        v_arr[0,i,:]=np.array([1,0])
+
+                    res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
+                                'r_arr':np.rot90(r_arr, k=-1), #radius R/X
+                                'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
+                                'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
+
+                    with open(o_file_name, 'wb') as f:
+                    # Pickle the 'data' dictionary using the highest protocol available.
+                        pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
 
                 if '2' in output_path:
                     ct_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '2', 'knt')
                     knots2file(ct_file_name, ct_path, sorted_knots)
+                    size = len(section_list)+1
+                    a_arr=np.zeros((1,size,1))
+                    r_arr=np.zeros((1,size,1))
+                    z_arr=np.zeros((1,size,1))
+                    v_arr=np.zeros((1,size,2))
+                    for i, var in enumerate(ct_path):
+                        coord = knot2coord(sorted_knots, var[0])
+                        print(coord)
+                        a_arr[0,i,0]=coord[0,0]
+                        r_arr[0,i,0]=coord[0,1]
+                        z_arr[0,i,0]=0
+                        v_arr[0,i,:]=np.array([1,0])
+                    a_arr[0,-1,0]=a_arr[0,0,0]
+                    r_arr[0,-1,0]=R_arr[0,0,0]
+                    z_arr[0,-1,0]=0
+                    v_arr[0,-1,:]=v_arr[0,0,:]
+
+                    res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
+                                'r_arr':np.rot90(r_arr, k=-1), #radius R/X
+                                'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
+                                'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
+
+                    with open(ct_file_name, 'wb') as f:
+                    # Pickle the 'data' dictionary using the highest protocol available.
+                        pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
+
+                print(' saved')
