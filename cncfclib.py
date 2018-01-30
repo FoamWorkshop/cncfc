@@ -7,13 +7,13 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from collections import Iterable
 
-def flatten(items):
-    """Yield items from any nested iterable; see REF."""
-    for x in items:
-        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
-            yield from flatten(x)
-        else:
-            yield x
+# def flatten(items):
+#     """Yield items from any nested iterable; see REF."""
+#     for x in items:
+#         if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+#             yield from flatten(x)
+#         else:
+#             yield x
 
 def read_data(f_name, msg='False'):
 
@@ -957,9 +957,9 @@ def transform(spar_data0, add_pedestal_top=False, add_pedestal_bottom=False):
             z_arr,
             v_arr)
 
-def add_pedestal(pos, add_pedestal_top=True, add_pedestal_bottom=True):
-    r = 35
-    h = np.array([0, 5, 5])
+def add_pedestal(pos, pedestal_params, add_pedestal_top=True, add_pedestal_bottom=True):
+    r = pedestal_params
+    h = np.array([0]+pedestal_params[1:])
     z1 = np.cumsum(h)
     z2 = np.cumsum(h[::-1])
     n_spars=pos.shape[1]
