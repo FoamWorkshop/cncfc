@@ -21,11 +21,15 @@ parser = argparse.ArgumentParser(description='test')
 parser.add_argument('-i',  '--input', default=[], type=str, help='input stl file')
 parser.add_argument('-o', '--output', default=[], type=str, help='output dxf file')
 parser.add_argument('-s', '--slices', default=[10,1,1], nargs='+', type=int, help='number of slices per axis')
+parser.add_argument('-k_e', '--slices_end_factors', default=[1,1,1], nargs='+', type=float, help='end sections offset')
+parser.add_argument('-p_o', '--proj_offsets', default=1, type=int, help='projection offsets')
 
 args = parser.parse_args()
 fname_stl = args.input
 fname_dxf = args.output
 slices_list = args.slices
+k_e = args.slices_end_factors
+proj_offsets = args.proj_offsets
 
 if ~len(fname_dxf):
     fname_dxf=fname_stl.split('.')[0]+'.dxf'
@@ -35,9 +39,9 @@ mesh = mesh.Mesh.from_file(fname_stl)
 dim_max = np.round(mesh.max_,3)
 dim_min = np.round(mesh.min_,3)
 
-sections_list = [([1,0,0], dim_min[0], dim_max[0], slices_list[0]),
-                 ([0,1,0], dim_min[1], dim_max[1], slices_list[1]),
-                 ([0,0,1], dim_min[2], dim_max[2], slices_list[2])]
+sections_list = [([1,0,0], dim_min[0] + k_e[0], dim_max[0] - k_e[0], slices_list[0]),
+                 ([0,1,0], dim_min[1] + k_e[1], dim_max[1] - k_e[1], slices_list[1]),
+                 ([0,0,1], dim_min[2] + k_e[2], dim_max[2] - k_e[2], slices_list[2])]
 
 section_plane_list=[]
 for i, (norm, n_min, n_max, n_sect) in enumerate(sections_list):
@@ -48,6 +52,9 @@ for i, (norm, n_min, n_max, n_sect) in enumerate(sections_list):
     if n_sect==1:
         cp_D0_arr = np.tile(norm,(n_sect,1)) * np.array([0.5*(n_min + n_max)])
     else:
+        #k_e jest offsetem, ktory zapobiega rzutowaniu sciany na plaszczyzne.
+        #rzutowanie triangulowanej plaszczyzny skutkuje 'poszatkowaniem' rzutu i
+        #dodatkowej, manualnej obrobki dxfa
         cp_D0_arr = np.tile(norm,(n_sect,1)) * np.linspace(n_min, n_max, n_sect)[:,np.newaxis]
 
     section_list=[]
@@ -92,19 +99,29 @@ for i, section_list in enumerate(section_plane_list):
                 z1 = row[1,2]
 
                 if i==0:
-                    block_x.add(dxf.line((z0+x0, y0), (z1+x1, y1),thickness=0, color=j))
-                    # block_x.add(dxf.line((y0+x0, z0), (y1+x1, z1),thickness=0, color=j))
+                        block_x.add(dxf.line((z0+x0, y0), (z1+x1, y1),thickness=0, color=j))
+                        if proj_offsets:
+                    else:
+                        block_x.add(dxf.line((y0, z0), (y1, z1),thickness=0, color=j))
+
                     block_x_ref = dxf.insert(blockname_x, insert=(0,0), layer='~slices_x')
                     drawing.add(block_x_ref)
 
                 elif i==1:
-                    block_y.add(dxf.line((x0, z0+y0), (x1, z1+y0),thickness=0, color=j))
-                    # block_y.add(dxf.line((x0, z0), (x1, z1),thickness=0, color=j))
+                    if proj_offsets:
+                        block_y.add(dxf.line((x0, z0+y0), (x1, z1+y0),thickness=0, color=j))
+                    else:
+                        block_y.add(dxf.line((x0, z0), (x1, z1),thickness=0, color=j))
+
                     block_y_ref = dxf.insert(blockname_y, insert=(0,0), layer='~slices_y')
                     drawing.add(block_y_ref)
 
                 elif i==2:
-                    block_z.add(dxf.line((x0, y0), (x1, y1),thickness=0, color=j))
+                    if proj_offsets:
+                        block_z.add(dxf.line((x0, y0), (x1, y1),thickness=0, color=j))
+                    else:
+                        block_z.add(dxf.line((x0, y0), (x1, y1),thickness=0, color=j))
+
                     block_z_ref = dxf.insert(blockname_z, insert=(0,0), layer='~slices_z')
                     drawing.add(block_z_ref)
 
