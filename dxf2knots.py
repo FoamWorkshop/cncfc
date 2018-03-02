@@ -46,7 +46,47 @@ program algorithm:
                 io_path and remining segment pool for the closed path
         7 - find the END segment for clock wise or counter clock wise direction and exclude the last knot from the ranking list.
         8 - find the ct_path
-        9 - save ct_path, io_path and reversed(io_path) to the output files'''
+        9 - save ct_path, io_path and reversed(io_path) to the output files
+
+        improvements:
+            #. fix dxf paths
+
+            #. layer naming convention
+                number with a tag in '()':
+                    xxxx()
+                    xxxx.()
+                    xxxx#y()
+                    xxxx#y.()
+
+            #. merging dxf drawings
+                *layers with the same number before # are merged so:
+                    xxxx#y0('path with props 0')
+                    xxxx#y1('path with props 1')
+                    xxxx#y2('path with props 2')
+
+            #. drawing keywords:
+                heating = 10(W)
+                angle = 90(deg)
+                radius = 100(mm)
+                cut_speed = 200(mm/min)
+                start/circle center - indicates begining of an unlooped path
+
+            #. data structure:
+                r - radius
+                a - angle
+                z - axial
+                s - slope
+                c - cutting speed
+                p - heating
+
+
+
+
+
+
+
+
+        '''
 
 import os
 import argparse
@@ -482,14 +522,6 @@ def main(args):
                     print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('loop seg.', len(ct_path),        ct_len(ct_path, sorted_knots), ct_len(ct_path, sorted_knots)*speed))
                     print('{0}'.format('-' * 80))
     #SUMMARY
-                    # print(section_list)
-                    print()
-
-                    # print(section_list[::-1])
-                    # print(ct_path)
-                    # print(sorted_knots)
-
-
                     if '1' in output_path:
                         i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
                         knots2file_1(i_file_name, section_list, z_coord)
