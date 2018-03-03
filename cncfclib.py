@@ -1049,7 +1049,103 @@ def make_chains(section_list):
         prof=make_loop(p_arr)
     return chain_list
 
+def dxf_read(dxf,    layer_name, dec_acc, n_arc, l_arc):
+    tol = dec_acc
+    knots_list = []
+    elements_list = []
+    hrd_knots_list=[]
+    hrd_element_list=[]
+    segment_bounds=[]
+    line_count = 0
+    arc_count = 0
+    circle_count = 0
+    path_offset =[0,0,0]
 
+    for shape in dxf.entities:
+        # print(shape.dxftype)
+        if shape.layer == layer_name:
+            if shape.dxftype == 'SPLINE':
+
+                print('degree: ',shape.degree)
+                print('start tangent: ',shape.start_tangent)
+                print('end tangent: ',shape.end_tangent)
+                print('control points: ',shape.control_points)
+                print('fit points: ',shape.fit_points)
+                print('knots: ',shape.knots)
+                print('weights: ',shape.weights)
+                print('normal vector: ',shape.normal_vector)
+
+                # circle_count += 1
+                # p1 = tuple(round(x, tol) for x in shape.center)
+                # segment_bounds.append(p1)
+                # # print(circle_count, p1)
+
+            if shape.dxftype == 'CIRCLE':
+                circle_count += 1
+                p1 = tuple(round(x, tol) for x in shape.center)
+                segment_bounds.append(p1)
+                # print(circle_count, p1)
+
+            if shape.dxftype == 'LINE':
+                line_count += 1
+                p1 = tuple(round(x, tol) for x in shape.start)
+                p2 = tuple(round(x, tol) for x in shape.end)
+                if p1!=p2:
+                    knots_list.append(p1)
+                    knots_list.append(p2)
+                    elements_list.append([p1, p2])
+
+            if shape.dxftype == 'MTEXT':
+                if shape.raw_text == 'coord_0':
+                    # print('path offset: {}'.format(shape.insert))
+                    path_offset = tuple(round(x, tol) for x in shape.insert)
+                    print('path offset: {}'.format(path_offset))
+
+            if shape.dxftype == 'ARC':
+                arc_count += 1
+                ARC_knots_list = []
+                n = n_arc  # number of segments
+                min_len = l_arc
+                O = shape.center
+                R = shape.radius
+                angl_1 = shape.start_angle * np.pi / 180
+                angl_2 = shape.end_angle * np.pi / 180
+
+                if angl_2 >= angl_1:
+                    angl_list = np.linspace(angl_1, angl_2, n)
+                else:
+                    angl_list = np.linspace(angl_1, angl_2 + 2 * np.pi, n)
+
+                arc_len = R * np.absolute(angl_2 - angl_1)
+
+                if arc_len / n < min_len:
+                    n = max(int(arc_len / min_len), 3)
+
+                for angl in angl_list:
+                    ARC_knots_list.append(
+                        (round(O[0] + R * np.cos(angl), tol), round(O[1] + R * np.sin(angl), tol), O[2]))
+
+                for i in range(n - 1):
+                    elements_list.append(ARC_knots_list[i:i + 2])
+
+                knots_list.extend(ARC_knots_list)
+
+    # print 'remove duplicates'
+    # print 'number of segments: ', len(elements_list)
+
+    hrd_element_list.append(elements_list[0])
+
+    for var in elements_list:
+        tmp=[var for hrd_var in hrd_element_list if (var[0] in hrd_var) and (var[1] in hrd_var)]
+        if  not len(tmp):
+            hrd_element_list.append(var)
+            # print 'removed elemts: ', len(elements_list)-len(hrd_element_list)
+
+
+    knots_list=[(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in knots_list]
+    hrd_element_list=[[(var1[0]-path_offset[0], var1[1]-path_offset[1], var1[2]-path_offset[2]), (var2[0]-path_offset[0], var2[1]-path_offset[1], var2[2]-path_offset[2])]for var1, var2 in hrd_element_list]
+    segment_bounds = [(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in segment_bounds]
+    return (knots_list, hrd_element_list, segment_bounds, [line_count, arc_count])
 
 
 if __name__ == '__main__':
