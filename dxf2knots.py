@@ -160,14 +160,6 @@ def ct_len(io_path, sorted_knots):
     return np.sum(l_arr)
 
 def ct_len_1(section_list):
-    # coord_list = []
-    # for var in io_path:
-    #     coord = knot2coord(sorted_knots, var[0])
-    #     coord_list.append((coord[0], coord[1]))
-    #
-    # coord = knot2coord(sorted_knots, io_path[-1][1])
-    # coord_list.append((coord[0], coord[1]))
-
     coord_arr=np.array(section_list)
     l_arr = np.linalg.norm(np.diff(coord_arr,axis=0), axis=1)
     return np.sum(l_arr)
@@ -185,11 +177,6 @@ def knots2file_1(name, section_list, z_coord):
     # f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
 
     f.close()
-
-def list_entities(dxf):
-    dxf_summary = [shape.dxftype for shape in dxf.entities]
-    print('{0:<10}: {1}'.format('LINES', dxf_summary.count('LINE')))
-    print('{0:<10}: {1}'.format('ARCS', dxf_summary.count('ARC')))
 
 
 def knots_dict(knots_list):
@@ -217,29 +204,6 @@ def elements_knots2coords(el_list, kt_list):
                 p2 = kt[1]
         el_coord_list.append([p1, p2])
     return el_coord_list
-
-
-def knots_rank_list_summary(knots_rank):
-    print('{0:<16}: {1}'.format('IO knots', [x[1] for x in knots_rank].count(1),
-                                [x[0] for x in knots_rank if x[1] == 1]))
-    print('{0:<16}: {1}'.format('master knots', [x[1] for x in knots_rank].count(3),
-                                [x[0] for x in knots_rank if x[1] == 3]))
-    print('{0:<16}: {1}'.format('chain knots', [x[1] for x in knots_rank].count(2),
-                                [x[0] for x in knots_rank if x[1] == 2]))
-
-
-def paths_summary(io_path, ct_path):
-    print("-----IN PATHS-----")
-    for var in io_path:
-        print("{0} {1}".format(var[0], var[1]))
-
-    print("-----CT PATHS-----")
-    for var in ct_path:
-        print("{0} {1}".format(var[0], var[1]))
-
-    print("-----OUT PATHS-----")
-    for var in reversed(io_path):
-        print("{0} {1}".format(var[1], var[0]))
 
 
 def find_path(crit, el_kt_list, sorted_knots, excl_knot):
@@ -301,14 +265,6 @@ def cw_order(seg1, seg2):
         return False
     else:
         return True
-
-
-def print_list(data_list, common_text):
-    for var in data_list:
-        print('{0} {1}'.format(common_text, var))
-
-
-
 
 def main(args):
 
