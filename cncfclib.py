@@ -1049,20 +1049,20 @@ def make_chains(section_list):
         prof=make_loop(p_arr)
     return chain_list
 
-def dxf_read(dxf,    layer_name, dec_acc, n_arc, l_arc):
+def dxf_read(dxf, layer_name, dec_acc, n_arc, l_arc):
     tol = dec_acc
     knots_list = []
     elements_list = []
     hrd_knots_list=[]
     hrd_element_list=[]
     segment_bounds=[]
+    start_coord=()
     line_count = 0
     arc_count = 0
     circle_count = 0
     path_offset =[0,0,0]
 
     for shape in dxf.entities:
-        # print(shape.dxftype)
         if shape.layer == layer_name:
             if shape.dxftype == 'SPLINE':
 
@@ -1075,16 +1075,10 @@ def dxf_read(dxf,    layer_name, dec_acc, n_arc, l_arc):
                 print('weights: ',shape.weights)
                 print('normal vector: ',shape.normal_vector)
 
-                # circle_count += 1
-                # p1 = tuple(round(x, tol) for x in shape.center)
-                # segment_bounds.append(p1)
-                # # print(circle_count, p1)
-
             if shape.dxftype == 'CIRCLE':
                 circle_count += 1
                 p1 = tuple(round(x, tol) for x in shape.center)
                 segment_bounds.append(p1)
-                # print(circle_count, p1)
 
             if shape.dxftype == 'LINE':
                 line_count += 1
@@ -1100,6 +1094,11 @@ def dxf_read(dxf,    layer_name, dec_acc, n_arc, l_arc):
                     # print('path offset: {}'.format(shape.insert))
                     path_offset = tuple(round(x, tol) for x in shape.insert)
                     print('path offset: {}'.format(path_offset))
+
+                if shape.raw_text == 'start':
+                    # print('path offset: {}'.format(shape.insert))
+                    start_coord = tuple(round(x, tol) for x in shape.insert)
+                    print('start coord: {}'.format(start_coord))
 
             if shape.dxftype == 'ARC':
                 arc_count += 1
@@ -1145,7 +1144,7 @@ def dxf_read(dxf,    layer_name, dec_acc, n_arc, l_arc):
     knots_list=[(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in knots_list]
     hrd_element_list=[[(var1[0]-path_offset[0], var1[1]-path_offset[1], var1[2]-path_offset[2]), (var2[0]-path_offset[0], var2[1]-path_offset[1], var2[2]-path_offset[2])]for var1, var2 in hrd_element_list]
     segment_bounds = [(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in segment_bounds]
-    return (knots_list, hrd_element_list, segment_bounds, [line_count, arc_count])
+    return (knots_list, hrd_element_list, segment_bounds, [line_count, arc_count], start_coord)
 
 
 if __name__ == '__main__':
