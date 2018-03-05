@@ -79,13 +79,9 @@ program algorithm:
                 c - cutting speed
                 p - heating
 
-
-
-
-
-
-
-
+        drawing options:
+        continous lines
+        loops
         '''
 
 import os
@@ -309,7 +305,7 @@ def main(args):
             layer_name_list= [ var.name for var in dxf_layers if layer_list[0] in var.name]
 
             for layer_name in sorted(layer_name_list):
-                knots_list, elements_list, segment_bounds, shape_count = cncfclib.dxf_read(dxf, layer_name, dec_acc, n_arc, l_arc)
+                knots_list, elements_list, segment_bounds, shape_count, start_coord = cncfclib.dxf_read(dxf, layer_name, dec_acc, n_arc, l_arc)
                 print 'dxf loaded'
 
                 sorted_knots = knots_dict(knots_list)
@@ -317,6 +313,9 @@ def main(args):
                 knots_rank = knots_rank_list(el_kt_list, sorted_knots, None)
                 master_knot = knots_rank_find(knots_rank, 3)
                 IO_knot = knots_rank_find(knots_rank, 1)
+                print(master_knot)
+                if len(start_coord) and len(IO_knot) % 2 == 0 and master_knot[0] is None:
+                    print('found {} lines'.format(len(IO_knot)//2))
 
 
                 if len(IO_knot) != 1 or len(master_knot) != 1 or IO_knot[0] == None or master_knot[0] == None:
