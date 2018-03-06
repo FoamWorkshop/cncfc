@@ -316,11 +316,15 @@ def main(args):
                 # IO_knot = knots_rank_find(knots_rank, 1)
                 unique_knots, counts = np.unique(knots_arr, return_counts=True, axis=0)
                 unique_knots_1 = unique_knots[np.where(counts == 1)[0]]
-                IO_knot_d, IO_knot_i = cncfclib.find_nearest(unique_knots_1, start_coord)
-                IO_knot = unique_knots_1[IO_knot_i][0]
+
+                if start_coord:
+                    IO_knot_d, IO_knot_i = cncfclib.find_nearest(unique_knots_1, start_coord)
+
+                    IO_knot = unique_knots_1[IO_knot_i][0]
+                else:
+                    IO_knot = unique_knots_1[0]
+
                 print(IO_knot)
-                print(counts)
-                # print(master_knot)
 
                 if len(start_coord) and len(IO_knot) % 2 == 0 and master_knot[0] is None:
                     print('found {} lines'.format(len(IO_knot)//2))
