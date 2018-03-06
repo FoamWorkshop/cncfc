@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 from __future__ import division
 __author__ = 'FoamWorkshop'
 
@@ -82,15 +82,16 @@ program algorithm:
         drawing options:
         continous lines
         loops
+        import os
         '''
 
-import os
 import argparse
 import sys
 import dxfgrabber
 import numpy as np
 import pickle
 import cncfclib
+import os
 
 
 def sub_points(p1, p2):
@@ -305,15 +306,22 @@ def main(args):
             layer_name_list= [ var.name for var in dxf_layers if layer_list[0] in var.name]
 
             for layer_name in sorted(layer_name_list):
-                knots_list, elements_list, segment_bounds, shape_count, start_coord = cncfclib.dxf_read(dxf, layer_name, dec_acc, n_arc, l_arc)
-                print 'dxf loaded'
+                knots_list, elements_arr, segment_bounds, shape_count, start_coord = cncfclib.dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc)
+                print('dxf loaded')
+                knots_arr = elements_arr.reshape(-1,3)
+                # sorted_knots = knots_dict(knots_list)
+                # el_kt_list = elements_coords2knots(elements_list, sorted_knots)
+                # knots_rank = knots_rank_list(el_kt_list, sorted_knots, None)
+                # master_knot = knots_rank_find(knots_rank, 3)
+                # IO_knot = knots_rank_find(knots_rank, 1)
+                unique_knots, counts = np.unique(knots_arr, return_counts=True, axis=0)
+                unique_knots_1 = unique_knots[np.where(counts == 1)[0]]
+                IO_knot_d, IO_knot_i = cncfclib.find_nearest(unique_knots_1, start_coord)
+                IO_knot = unique_knots_1[IO_knot_i][0]
+                print(IO_knot)
+                print(counts)
+                # print(master_knot)
 
-                sorted_knots = knots_dict(knots_list)
-                el_kt_list = elements_coords2knots(elements_list, sorted_knots)
-                knots_rank = knots_rank_list(el_kt_list, sorted_knots, None)
-                master_knot = knots_rank_find(knots_rank, 3)
-                IO_knot = knots_rank_find(knots_rank, 1)
-                print(master_knot)
                 if len(start_coord) and len(IO_knot) % 2 == 0 and master_knot[0] is None:
                     print('found {} lines'.format(len(IO_knot)//2))
 
@@ -331,8 +339,8 @@ def main(args):
 
                     io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
                     last_el, excl_knot = find_l_el(path_dir, el_kt_list, sorted_knots, master_knot[0])
-                    ct_path = find_path(1, el_kt_list, sorted_knots, excl_knot[0])  # loop path
 
+                    ct_path = find_path(1, el_kt_list, sorted_knots, excl_knot[0])  # loop path
 
                     io_knots_coord = [knot2coord(sorted_knots,var[0]) for var in io_path]
                     io_knots_coord.append(knot2coord(sorted_knots,io_path[-1][1]))
