@@ -1265,8 +1265,7 @@ def sort_segments(arr, start_pt, stop_pt=np.array([])):
         start_pt = np.array( 3 ) ex: [x,y,z]
     '''
     pt0 = start_pt
-    sorted_arr = np.empty_like(arr)
-
+    sorted_arr = np.zeros_like(arr)
     A_arr = arr[:,0,:]
     B_arr = arr[:,1,:]
 
@@ -1292,7 +1291,7 @@ def sort_segments(arr, start_pt, stop_pt=np.array([])):
         if np.array_equal(stop_pt, pt0):
             break
 
-    return sorted_arr
+    return sorted_arr[:i+1]
 
 #
 #DXF2KNOTS functions potentialy to remove

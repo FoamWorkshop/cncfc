@@ -50,7 +50,7 @@ program algorithm:
 
         improvements:
             #. fix dxf paths
-
+            #. use regular expresion to match layer names
             #. layer naming convention
                 number with a tag in '()':
                     xxxx()
@@ -92,179 +92,15 @@ import numpy as np
 import pickle
 import cncfclib
 import os
+import re
 
-
-def sub_points(p1, p2):
-    vect = []
-    p1 = [x for x in p1[0]]
-    p2 = [x for x in p2[0]]
-
-    if len(p1) == len(p2):
-        for i, n in enumerate(p2):
-            vect.append(n - p1[i])
-        return vect
-    return len(p1) * [None]
-
-
-def knots_rank_find(knots_rank, rank):
-    knots = [x[0] for x in knots_rank if x[1] == rank]
-    if len(knots) > 0:
-        return knots
-    else:
-        return [None]
-
-
-def knots_rank_list(el_kt_list, sorted_knots, skip_knot):
-    knots_rank = []
-    for var in sorted_knots:
-        if var[0] == skip_knot:
-            knots_rank.append([var[0], None])
-        else:
-            knots_rank.append([var[0], [x for a in el_kt_list for x in a].count(var[0])])
-    return knots_rank
-
-
-def knot2coord(sorted_knots, knot):
-    for var in sorted_knots:
-        if var[0] == knot:
-            return var[1]
-    return None
-
-
-def knots2file(name, io_path, sorted_knots):
-    f = open(name, 'w')
-
-    for var in io_path:
-        coord = knot2coord(sorted_knots, var[0])
-        f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
-
-    coord = knot2coord(sorted_knots, io_path[-1][1])
-    f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
-
-    f.close()
-
-def ct_len(io_path, sorted_knots):
-    coord_list = []
-    for var in io_path:
-        coord = knot2coord(sorted_knots, var[0])
-        coord_list.append((coord[0], coord[1]))
-
-    coord = knot2coord(sorted_knots, io_path[-1][1])
-    coord_list.append((coord[0], coord[1]))
-
-    coord_arr=np.array(coord_list)
-    l_arr = np.linalg.norm(np.diff(coord_arr,axis=0), axis=1)
-    return np.sum(l_arr)
 
 def ct_len_1(sect_arr):
-    # coord_arr=np.array(section_list)
     u = sect_arr[:,0,:]
     v = sect_arr[:,1,:]
     p = v - u
     l_arr = np.linalg.norm( p, axis=1)
     return np.sum(l_arr)
-
-
-def knots2file_1(name, section_list):
-    f = open(name, 'w')
-    # print('TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
-    for var in section_list:
-        # coord = knot2coord(sorted_knots, var[0])
-        # print(var)
-        f.write('{0:.3f} {1:.3f} {2:.3f}\n'.format(var[0], var[1], z_coord))
-
-    # coord = knot2coord(sorted_knots, io_path[-1][1])
-    # f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
-
-    f.close()
-
-
-def knots_dict(knots_list):
-    return [[i, var] for i, var in enumerate(list(set(knots_list)))]
-
-def elements_coords2knots(el_list, kt_list):
-    el_kt_list = []
-    for el in el_list:
-        for kt in kt_list:
-            if kt[1] == el[0]:
-                p1 = kt[0]
-            if kt[1] == el[1]:
-                p2 = kt[0]
-        el_kt_list.append([p1, p2])
-    return el_kt_list
-
-
-def elements_knots2coords(el_list, kt_list):
-    el_coord_list = []
-    for el in el_list:
-        for kt in kt_list:
-            if kt[0] == el[0]:
-                p1 = kt[1]
-            if kt[0] == el[1]:
-                p2 = kt[1]
-        el_coord_list.append([p1, p2])
-    return el_coord_list
-
-
-def find_path(crit, el_kt_list, sorted_knots, excl_knot):
-    path = []
-
-    knots_rank = knots_rank_list(el_kt_list, sorted_knots, excl_knot)
-
-    curr_knot = knots_rank_find(knots_rank, 1)
-    last_knot = knots_rank_find(knots_rank, 3)
-
-    curr_element=[]
-
-    # print '\nfinding path'
-    while not ((curr_element is None) or curr_knot[0]==last_knot[0]):
-        # print '\rpool size: {0}'.format(len(path)),
-
-        curr_element=next((element for element in el_kt_list if curr_knot[0] in element), None)
-        if not (curr_element is None):
-
-            if curr_element[0] == curr_knot[0]:
-                curr_knot=[curr_element[1]]
-                path.append(curr_element)
-            else:
-                curr_knot=[curr_element[0]]
-                path.append(curr_element[::-1])
-
-            el_kt_list.remove(curr_element)
-
-    if crit == 1:
-        path.append([path[-1][1], path[0][0]])
-    # print '\n'
-    return path
-
-
-def find_l_el(read_dir, el_kt_list, sorted_knots, master_knot):
-    # find all elements including master_knot and put into el_index list
-    el_index = [i for i, element in enumerate(
-        el_kt_list) if master_knot in element]
-
-    seg1, seg2 = elements_knots2coords(
-        [el_kt_list[i] for i in el_index], sorted_knots)
-
-    if cw_order(seg1, seg2) == read_dir:
-        cur_ind = el_index[1]
-    else:
-        cur_ind = el_index[0]
-
-    last_el = el_kt_list.pop(cur_ind)
-    excl_knot = [x for x in last_el if x != master_knot]  # take the other knot
-
-    return (last_el, excl_knot)
-
-
-def cw_order(seg1, seg2):
-    common_el = [x for x in list(set(seg1) & set(seg2))]
-    u = sub_points(common_el, list(set(seg1) - set(common_el)))
-    v = sub_points(common_el, list(set(seg2) - set(common_el)))
-    if np.linalg.norm(np.cross(u, v)) > 0:
-        return False
-    else:
-        return True
 
 def main(args):
 
@@ -282,7 +118,6 @@ def main(args):
     files_dxf = dxf_list
 
     if 1:
-
         print('SETTINGS:')
         print('{0}{1:<30}: {2}'.format(' ' * 10, 'decimal accuracy', dec_acc))
         print('{0}{1:<30}: {2}'.format(' ' * 10, 'arc segments count', n_arc))
@@ -310,29 +145,25 @@ def main(args):
 
             for layer_name in sorted(layer_name_list):
                 knots_list, elements_arr, segment_bounds, shape_count, start_coord = cncfclib.dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc)
+
                 print('dxf loaded')
+
                 knots_arr = elements_arr.reshape(-1,3)
-                # sorted_knots = knots_dict(knots_list)
-                # el_kt_list = elements_coords2knots(elements_list, sorted_knots)
-                # knots_rank = knots_rank_list(el_kt_list, sorted_knots, None)
-                # master_knot = knots_rank_find(knots_rank, 3)
-                # IO_knot = knots_rank_find(knots_rank, 1)
                 unique_knots, counts = np.unique(knots_arr, return_counts=True, axis=0)
                 unique_knots_1 = unique_knots[np.where(counts == 1)[0]]
 
                 if start_coord:
                     IO_knot_d, IO_knot_i = cncfclib.find_nearest(unique_knots_1, start_coord)
-
                     IO_knot = unique_knots_1[IO_knot_i]
                 else:
                     IO_knot = unique_knots_1
 
-                # print(IO_knot)
+                print(IO_knot)
 
                 unique_knots_3 = unique_knots[np.where(counts >=3)[0]]
                 stop_knot = unique_knots_3
 
-                # print(unique_knots_3)
+                print(unique_knots_3)
                 # if len(start_coord) and len(IO_knot) % 2 == 0 and master_knot[0] is None:
                 #     print('found {} lines'.format(len(IO_knot)//2))
                 #
@@ -348,7 +179,8 @@ def main(args):
                 # else:
 
                 # io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
-                io_path = cncfclib.sort_segments(elements_arr, IO_knot[0], stop_knot[0])
+                io_path = cncfclib.sort_segments(elements_arr, IO_knot[0], stop_pt=stop_knot[0])
+                print(io_path)
                 # print(io_path.shape)
                 #
                 # last_el, excl_knot = find_l_el(path_dir, el_kt_list, sorted_knots, master_knot[0])
@@ -457,7 +289,7 @@ def main(args):
 
                 if '2' in output_path:
                     ct_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '2', 'knt')
-                    knots2file(ct_file_name, ct_path, sorted_knots)
+                    # knots2file(ct_file_name, ct_path, sorted_knots)
                     # size = len(section_list)+1
                     # a_arr=np.zeros((1,size,1))
                     # r_arr=np.zeros((1,size,1))
@@ -522,24 +354,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-
-
-    # parser = argparse.ArgumentParser(description='This program slices dxf model using XYZ planes and saves projection of the section curves to a dxf file. Each section curve is saved as a block inserted into corresponding layer. In order to make the usage easier, block are colored.')
-    # parser.add_argument('-i', '--input', required = True, type=str, help='stl input file')
-    # parser.add_argument('-o', '--output', default=[], type=str, help='dxf output file')
-    # parser.add_argument('-s', '--slices', default=[10,1,1], nargs='+', type=int, help='(3 int numbers) number of slices per axis.\n 1 section -> mid plane\n2 - end section planes, >2 - linear spacing between min and max dimension')
-    # parser.add_argument('-k_e', '--slices_end_factors', default=[1,1,1], nargs='+', type=float, help='end sections offset (3 float numbers)')
-    # parser.add_argument('-p_o', '--proj_offsets', action='store_true', help='projection offsets. if activated additional coord ')
-    # parser.add_argument('-p_s', '--plot_sections', action='store_true', help='plot 3d sections using matplotlib')
-    # parser.add_argument('-sx', '--x_slices', default=[], nargs='+', type=float, help='define x slices, if -s is specified, the 2 lists are merged')
-    # parser.add_argument('-sy', '--y_slices', default=[], nargs='+', type=float, help='define y slices, if -s is specified, the 2 lists are merged')
-    # parser.add_argument('-sz', '--z_slices', default=[], nargs='+', type=float, help='define z slices, if -s is specified, the 2 lists are merged')
-    # args = parser.parse_args()
-    # print(args)
-    # fname_stl = args.input
-    # fname_dxf = args.output
-    # slices_list = args.slices
-    # k_e = args.slices_end_factors
-    # proj_offsets = args.proj_offsets
-    # plot_sections = args.plot_sections
     main(args)
