@@ -1227,8 +1227,6 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
 
                 knots_list.extend(ARC_knots_list)
 
-    # print 'remove duplicates'
-    # print 'number of segments: ', len(elements_list)
 
     hrd_element_list.append(elements_list[0])
 
@@ -1236,15 +1234,31 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
         tmp=[var for hrd_var in hrd_element_list if (var[0] in hrd_var) and (var[1] in hrd_var)]
         if  not len(tmp):
             hrd_element_list.append(var)
-            # print 'removed elemts: ', len(elements_list)-len(hrd_element_list)
 
+    element_arr=np.array(hrd_element_list)
+    knots_arr=np.array(knots_list)
+    segment_boundaries = np.array(segment_bounds)
+    path_offset_arr = np.array(path_offset)
+    start_coord_arr = np.array(start_coord)
+    knots_arr -=path_offset_arr
+    element_arr -=path_offset_arr
 
-    knots_list=[(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in knots_list]
-    hrd_element_list=[[(var1[0]-path_offset[0], var1[1]-path_offset[1], var1[2]-path_offset[2]), (var2[0]-path_offset[0], var2[1]-path_offset[1], var2[2]-path_offset[2])]for var1, var2 in hrd_element_list]
-    segment_bounds = [(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in segment_bounds]
-    return (knots_list, hrd_element_list, segment_bounds, [line_count, arc_count], start_coord)
+    if segment_bounds:
+        segment_boundaries -=path_offset_arr
 
-def sort_segments(arr, start_pt):
+    if start_coord:
+        start_coord -= path_offset_arr
+
+    return (knots_arr, element_arr, segment_boundaries, [line_count, arc_count], start_coord_arr)
+
+def find_nearest(arr, pt0):
+
+    tree = spatial.cKDTree(arr)
+    d, i = tree.query(pt0, k=[1])
+
+    return d, i
+
+def sort_segments(arr, start_pt, stop_pt=np.array([])):
     '''Make a /chain sorting/ of segments defined in the arr. The starting point is definied by start_pt. If there is no exact pt matching, the function uses the nearest end pt
     PARAMETERS:
         arr = np.array( ix2x3 ) ex: [[[x,y,z],[x1,y1,z1]],[[x2,y2,y3],[x1,y1,z1]],...]
@@ -1257,14 +1271,12 @@ def sort_segments(arr, start_pt):
     B_arr = arr[:,1,:]
 
     for i in np.arange( np.shape(arr)[0]):
-        A_tree = spatial.cKDTree(A_arr)
-        B_tree = spatial.cKDTree(B_arr)
 
-        A_d, A_i = A_tree.query(pt0, k=[1])
-        B_d, B_i = B_tree.query(pt0, k=[1])
+        A_d, A_i = find_nearest(A_arr, pt0)
+        B_d, B_i = find_nearest(B_arr, pt0)
 
         if A_d[0]<B_d[0]:
-            print('first')
+            # print('first')
             sorted_arr[i,0,:]= A_arr[A_i[0]]
             sorted_arr[i,1,:]= B_arr[A_i[0]]
             pt0 = B_arr[A_i[0]]
@@ -1277,8 +1289,176 @@ def sort_segments(arr, start_pt):
             A_arr = np.delete(A_arr, B_i[0], axis = 0)
             B_arr = np.delete(B_arr, B_i[0], axis = 0)
 
+        if np.array_equal(stop_pt, pt0):
+            break
+
     return sorted_arr
 
+#
+#DXF2KNOTS functions potentialy to remove
+def sub_points(p1, p2):
+    vect = []
+    p1 = [x for x in p1[0]]
+    p2 = [x for x in p2[0]]
+
+    if len(p1) == len(p2):
+        for i, n in enumerate(p2):
+            vect.append(n - p1[i])
+        return vect
+    return len(p1) * [None]
+
+
+def knots_rank_find(knots_rank, rank):
+    knots = [x[0] for x in knots_rank if x[1] == rank]
+    if len(knots) > 0:
+        return knots
+    else:
+        return [None]
+
+
+def knots_rank_list(el_kt_list, sorted_knots, skip_knot):
+    knots_rank = []
+    for var in sorted_knots:
+        if var[0] == skip_knot:
+            knots_rank.append([var[0], None])
+        else:
+            knots_rank.append([var[0], [x for a in el_kt_list for x in a].count(var[0])])
+    return knots_rank
+
+
+def knot2coord(sorted_knots, knot):
+    for var in sorted_knots:
+        if var[0] == knot:
+            return var[1]
+    return None
+
+
+def knots2file(name, io_path, sorted_knots):
+    f = open(name, 'w')
+
+    for var in io_path:
+        coord = knot2coord(sorted_knots, var[0])
+        f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
+
+    coord = knot2coord(sorted_knots, io_path[-1][1])
+    f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
+
+    f.close()
+
+def ct_len(io_path, sorted_knots):
+    coord_list = []
+    for var in io_path:
+        coord = knot2coord(sorted_knots, var[0])
+        coord_list.append((coord[0], coord[1]))
+
+    coord = knot2coord(sorted_knots, io_path[-1][1])
+    coord_list.append((coord[0], coord[1]))
+
+    coord_arr=np.array(coord_list)
+    l_arr = np.linalg.norm(np.diff(coord_arr,axis=0), axis=1)
+    return np.sum(l_arr)
+def knots2file_1(name, section_list):
+    f = open(name, 'w')
+    # print('TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
+    for var in section_list:
+        # coord = knot2coord(sorted_knots, var[0])
+        # print(var)
+        f.write('{0:.3f} {1:.3f} {2:.3f}\n'.format(var[0], var[1], z_coord))
+
+    # coord = knot2coord(sorted_knots, io_path[-1][1])
+    # f.write('{0:.3f} {1:.3f}\n'.format(coord[0], coord[1]))
+
+    f.close()
+
+
+def knots_dict(knots_list):
+    return [[i, var] for i, var in enumerate(list(set(knots_list)))]
+
+def elements_coords2knots(el_list, kt_list):
+    el_kt_list = []
+    for el in el_list:
+        for kt in kt_list:
+            if kt[1] == el[0]:
+                p1 = kt[0]
+            if kt[1] == el[1]:
+                p2 = kt[0]
+        el_kt_list.append([p1, p2])
+    return el_kt_list
+
+
+def elements_knots2coords(el_list, kt_list):
+    el_coord_list = []
+    for el in el_list:
+        for kt in kt_list:
+            if kt[0] == el[0]:
+                p1 = kt[1]
+            if kt[0] == el[1]:
+                p2 = kt[1]
+        el_coord_list.append([p1, p2])
+    return el_coord_list
+
+
+def find_path(crit, el_kt_list, sorted_knots, excl_knot):
+    path = []
+
+    knots_rank = knots_rank_list(el_kt_list, sorted_knots, excl_knot)
+
+    curr_knot = knots_rank_find(knots_rank, 1)
+    last_knot = knots_rank_find(knots_rank, 3)
+
+    curr_element=[]
+
+    # print '\nfinding path'
+    while not ((curr_element is None) or curr_knot[0]==last_knot[0]):
+        # print '\rpool size: {0}'.format(len(path)),
+
+        curr_element=next((element for element in el_kt_list if curr_knot[0] in element), None)
+        if not (curr_element is None):
+
+            if curr_element[0] == curr_knot[0]:
+                curr_knot=[curr_element[1]]
+                path.append(curr_element)
+            else:
+                curr_knot=[curr_element[0]]
+                path.append(curr_element[::-1])
+
+            el_kt_list.remove(curr_element)
+
+    if crit == 1:
+        path.append([path[-1][1], path[0][0]])
+    # print '\n'
+    return path
+
+
+def find_l_el(read_dir, el_kt_list, sorted_knots, master_knot):
+    # find all elements including master_knot and put into el_index list
+    el_index = [i for i, element in enumerate(
+        el_kt_list) if master_knot in element]
+
+    seg1, seg2 = elements_knots2coords(
+        [el_kt_list[i] for i in el_index], sorted_knots)
+
+    if cw_order(seg1, seg2) == read_dir:
+        cur_ind = el_index[1]
+    else:
+        cur_ind = el_index[0]
+
+    last_el = el_kt_list.pop(cur_ind)
+    excl_knot = [x for x in last_el if x != master_knot]  # take the other knot
+
+    return (last_el, excl_knot)
+
+
+def cw_order(seg1, seg2):
+    common_el = [x for x in list(set(seg1) & set(seg2))]
+    u = sub_points(common_el, list(set(seg1) - set(common_el)))
+    v = sub_points(common_el, list(set(seg2) - set(common_el)))
+    if np.linalg.norm(np.cross(u, v)) > 0:
+        return False
+    else:
+        return True
+
+#
 if __name__ == '__main__':
 
     # cross_point(P1, P2, Q1, Q2)
