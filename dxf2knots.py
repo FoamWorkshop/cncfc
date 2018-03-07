@@ -156,13 +156,16 @@ def ct_len(io_path, sorted_knots):
     l_arr = np.linalg.norm(np.diff(coord_arr,axis=0), axis=1)
     return np.sum(l_arr)
 
-def ct_len_1(section_list):
-    coord_arr=np.array(section_list)
-    l_arr = np.linalg.norm(np.diff(coord_arr,axis=0), axis=1)
+def ct_len_1(sect_arr):
+    # coord_arr=np.array(section_list)
+    u = sect_arr[:,0,:]
+    v = sect_arr[:,1,:]
+    p = v - u
+    l_arr = np.linalg.norm( p, axis=1)
     return np.sum(l_arr)
 
 
-def knots2file_1(name, section_list, z_coord):
+def knots2file_1(name, section_list):
     f = open(name, 'w')
     # print('TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
     for var in section_list:
@@ -320,160 +323,171 @@ def main(args):
                 if start_coord:
                     IO_knot_d, IO_knot_i = cncfclib.find_nearest(unique_knots_1, start_coord)
 
-                    IO_knot = unique_knots_1[IO_knot_i][0]
+                    IO_knot = unique_knots_1[IO_knot_i]
                 else:
-                    IO_knot = unique_knots_1[0]
+                    IO_knot = unique_knots_1
 
-                print(IO_knot)
+                # print(IO_knot)
 
-                if len(start_coord) and len(IO_knot) % 2 == 0 and master_knot[0] is None:
-                    print('found {} lines'.format(len(IO_knot)//2))
+                unique_knots_3 = unique_knots[np.where(counts >=3)[0]]
+                stop_knot = unique_knots_3
+
+                # print(unique_knots_3)
+                # if len(start_coord) and len(IO_knot) % 2 == 0 and master_knot[0] is None:
+                #     print('found {} lines'.format(len(IO_knot)//2))
+                #
+                # if len(IO_knot) != 1 or len(master_knot) != 1 or IO_knot[0] == None or master_knot[0] == None:
+                #     print('{0:^20}|'.format('SKIPPED'))
+                    # for var in IO_knot:
+                    #     print("IO knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
+                    # for var in master_knot:
+                    #     print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
+                    # var =10
+                    # print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
+
+                # else:
+
+                # io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
+                io_path = cncfclib.sort_segments(elements_arr, IO_knot[0], stop_knot[0])
+                # print(io_path.shape)
+                #
+                # last_el, excl_knot = find_l_el(path_dir, el_kt_list, sorted_knots, master_knot[0])
+                #
+                # ct_path = find_path(1, el_kt_list, sorted_knots, excl_knot[0])  # loop path
+                #
+                # io_knots_coord = [knot2coord(sorted_knots,var[0]) for var in io_path]
+                # io_knots_coord.append(knot2coord(sorted_knots,io_path[-1][1]))
+
+#EQUIVALENCE SECTION
+#                 section_list = io_knots_coord
+#
+#                 if eq_sect:
+#                     print('drw. splits: {0:4d}'.format(segment_bounds.shape[0]))
+#                     section_list = []
+#                     section = []
+#                     updated_section_list = []
+#                     n_seg = np.linspace(0,1,eq_sect)
+#                     # print(segment_bounds)
+#                     for i, var in enumerate(io_knots_coord):
+#                         section.append(var)
+#                         # print(var)
+#                         if var in segment_bounds:
+#                             # print(var)
+#                             section_list.append(section)
+#                             section = []
+#                             section.append(var)
+#                     section_list.append(section)
+#
+#                     for i, section in enumerate(section_list):
+#                         if i not in eq_sect_skip and i not in [var+len(segment_bounds) for var in eq_sect_skip]:
+#                             # print('equivalence section {}'.format(i))
+#                             p = np.array(section)
+#                             l = np.sqrt(np.diff(p[:,0])**2 + np.diff(p[:,1])**2)
+#                             l = np.cumsum(np.hstack((0,l)))
+#                             # print(n_seg)
+#                             # print(l)
+#                             l_norm = l/l[-1]
+#                             # print(l_norm)
+#                             x=np.interp(n_seg, l_norm, p[:,0])
+#                             y=np.interp(n_seg, l_norm, p[:,1])
+#                             z=np.vstack((x,y)).T
+#                             # print(z)
+#                             section = z.tofileslist()
+#                         updated_section_list.append(section)
+# #flatten the list of lists
+#                     section_list = [var for sublist in updated_section_list for var in sublist]
 
 
-                if len(IO_knot) != 1 or len(master_knot) != 1 or IO_knot[0] == None or master_knot[0] == None:
-                    print('{0:^20}|'.format('SKIPPED'))
-                    for var in IO_knot:
-                        print("IO knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
-                    for var in master_knot:
-                        print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
-                    var =10
-                    print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
 
-                else:
+#SUMMARY
+                speed = 60/200
+                print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('i/o  seg.', io_path.shape[0], ct_len_1(io_path), ct_len_1(io_path)*speed))
+                # print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('loop seg.', len(ct_path),        ct_len(ct_path, sorted_knots), ct_len(ct_path, sorted_knots)*speed))
+                print('{0}'.format('-' * 80))
+#SUMMARY
+                if '1' in output_path:
+                    i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
+                    np.save(i_file_name, io_path)
+                    # knots2file_1(i_file_name, io_path)
+#                     size = len(section_list)
+#                     a_arr=np.zeros((1,size,1))
+#                     r_arr=np.zeros((1,size,1))
+#                     z_arr=np.zeros((1,size,1))
+#                     v_arr=np.zeros((1,size,2))
+#                     print('found: ', len(section_list),' input sections')
+#                     for i, var in enumerate(section_list):
+#                         a_arr[0,i,0]=var[0]
+#                         r_arr[0,i,0]=var[1]
+#                         z_arr[0,i,0]=0
+#                         v_arr[0,i,:]=np.array([1,0])
+#
+#                     res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
+#                                 'r_arr':np.rot90(r_arr, k=-1), #radius R/X
+#                                 'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
+#                                 'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
+#
+#                     with open(i_file_name, 'wb') as f:
+# # Pickle the 'data' dictionary using the highest protocol available.
+#                         pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
 
-                    io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
-                    last_el, excl_knot = find_l_el(path_dir, el_kt_list, sorted_knots, master_knot[0])
+                if '3' in output_path:
+                    o_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '3', 'knt')
+                    np.save(o_file_name, io_path[::-1])
+                    # knots2file_1(o_file_name, section_list[::-1], z_coord)
+                    # size = len(section_list)
+                    # a_arr=np.zeros((1,size,1))
+                    # r_arr=np.zeros((1,size,1))
+                    # z_arr=np.zeros((1,size,1))
+                    # v_arr=np.zeros((1,size,2))
+                    # print('found: ', len(section_list),' output sections')
+                    # for i, var in enumerate(section_list):
+                    #     a_arr[0,i,0]=var[0]
+                    #     r_arr[0,i,0]=var[1]
+                    #     z_arr[0,i,0]=0
+                    #     v_arr[0,i,:]=np.array([1,0])
+                    #
+                    # res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
+                    #             'r_arr':np.rot90(r_arr, k=-1), #radius R/X
+                    #             'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
+                    #             'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
+                    #
+                    # with open(o_file_name, 'wb') as f:
+                    # # Pickle the 'data' dictionary using the highest protocol available.
+                    #     pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
 
-                    ct_path = find_path(1, el_kt_list, sorted_knots, excl_knot[0])  # loop path
+                if '2' in output_path:
+                    ct_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '2', 'knt')
+                    knots2file(ct_file_name, ct_path, sorted_knots)
+                    # size = len(section_list)+1
+                    # a_arr=np.zeros((1,size,1))
+                    # r_arr=np.zeros((1,size,1))
+                    # z_arr=np.zeros((1,size,1))
+                    # v_arr=np.zeros((1,size,2))
+                    #
+                    # print('found: ', len(section_list)+1,' shape sections')
+                    # for i, var in enumerate(ct_path):
+                    #     coord = knot2coord(sorted_knots, var[0])
+                    #     # print(coord)
+                    #     a_arr[0,i,0] = 0
+                    #     r_arr[0,i,0] = coord[0]
+                    #     z_arr[0,i,0] = coord[1]
+                    #     v_arr[0,i,:] = np.array([1,0])
+                    #
+                    # a_arr[0,-1,0]=a_arr[0,0,0]
+                    # r_arr[0,-1,0]=r_arr[0,0,0]
+                    # z_arr[0,-1,0]=0
+                    # v_arr[0,-1,:]=v_arr[0,0,:]
+                    #
+                    # res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
+                    #             'r_arr':np.rot90(r_arr, k=-1), #radius R/X
+                    #             'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
+                    #             'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
+                    #
+                    # with open(ct_file_name, 'wb') as f:
+                    # # Pickle the 'data' dictionary using the highest protocol available.
+                    #     pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
 
-                    io_knots_coord = [knot2coord(sorted_knots,var[0]) for var in io_path]
-                    io_knots_coord.append(knot2coord(sorted_knots,io_path[-1][1]))
-
-    #EQUIVALENCE SECTION
-                    section_list = io_knots_coord
-
-                    if eq_sect:
-                        print('drw. splits: {0:4d}'.format(len(segment_bounds)))
-                        section_list = []
-                        section = []
-                        updated_section_list = []
-                        n_seg = np.linspace(0,1,eq_sect)
-                        # print(segment_bounds)
-                        for i, var in enumerate(io_knots_coord):
-                            section.append(var)
-                            # print(var)
-                            if var in segment_bounds:
-                                # print(var)
-                                section_list.append(section)
-                                section = []
-                                section.append(var)
-                        section_list.append(section)
-
-                        for i, section in enumerate(section_list):
-                            if i not in eq_sect_skip and i not in [var+len(segment_bounds) for var in eq_sect_skip]:
-                                # print('equivalence section {}'.format(i))
-                                p = np.array(section)
-                                l = np.sqrt(np.diff(p[:,0])**2 + np.diff(p[:,1])**2)
-                                l = np.cumsum(np.hstack((0,l)))
-                                # print(n_seg)
-                                # print(l)
-                                l_norm = l/l[-1]
-                                # print(l_norm)
-                                x=np.interp(n_seg, l_norm, p[:,0])
-                                y=np.interp(n_seg, l_norm, p[:,1])
-                                z=np.vstack((x,y)).T
-                                # print(z)
-                                section = z.tofileslist()
-                            updated_section_list.append(section)
-    #flatten the list of lists
-                        section_list = [var for sublist in updated_section_list for var in sublist]
-    #SUMMARY
-                    speed = 60/200
-                    print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('i/o  seg.', len(section_list)-1, ct_len_1(section_list), ct_len_1(section_list)*speed))
-                    print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('loop seg.', len(ct_path),        ct_len(ct_path, sorted_knots), ct_len(ct_path, sorted_knots)*speed))
-                    print('{0}'.format('-' * 80))
-    #SUMMARY
-                    if '1' in output_path:
-                        i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
-                        knots2file_1(i_file_name, section_list, z_coord)
-    #                     size = len(section_list)
-    #                     a_arr=np.zeros((1,size,1))
-    #                     r_arr=np.zeros((1,size,1))
-    #                     z_arr=np.zeros((1,size,1))
-    #                     v_arr=np.zeros((1,size,2))
-    #                     print('found: ', len(section_list),' input sections')
-    #                     for i, var in enumerate(section_list):
-    #                         a_arr[0,i,0]=var[0]
-    #                         r_arr[0,i,0]=var[1]
-    #                         z_arr[0,i,0]=0
-    #                         v_arr[0,i,:]=np.array([1,0])
-    #
-    #                     res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
-    #                                 'r_arr':np.rot90(r_arr, k=-1), #radius R/X
-    #                                 'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
-    #                                 'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
-    #
-    #                     with open(i_file_name, 'wb') as f:
-    # # Pickle the 'data' dictionary using the highest protocol available.
-    #                         pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
-
-                    if '3' in output_path:
-                        o_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '3', 'knt')
-                        knots2file_1(o_file_name, section_list[::-1], z_coord)
-                        # size = len(section_list)
-                        # a_arr=np.zeros((1,size,1))
-                        # r_arr=np.zeros((1,size,1))
-                        # z_arr=np.zeros((1,size,1))
-                        # v_arr=np.zeros((1,size,2))
-                        # print('found: ', len(section_list),' output sections')
-                        # for i, var in enumerate(section_list):
-                        #     a_arr[0,i,0]=var[0]
-                        #     r_arr[0,i,0]=var[1]
-                        #     z_arr[0,i,0]=0
-                        #     v_arr[0,i,:]=np.array([1,0])
-                        #
-                        # res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
-                        #             'r_arr':np.rot90(r_arr, k=-1), #radius R/X
-                        #             'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
-                        #             'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
-                        #
-                        # with open(o_file_name, 'wb') as f:
-                        # # Pickle the 'data' dictionary using the highest protocol available.
-                        #     pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
-
-                    if '2' in output_path:
-                        ct_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '2', 'knt')
-                        knots2file(ct_file_name, ct_path, sorted_knots)
-                        # size = len(section_list)+1
-                        # a_arr=np.zeros((1,size,1))
-                        # r_arr=np.zeros((1,size,1))
-                        # z_arr=np.zeros((1,size,1))
-                        # v_arr=np.zeros((1,size,2))
-                        #
-                        # print('found: ', len(section_list)+1,' shape sections')
-                        # for i, var in enumerate(ct_path):
-                        #     coord = knot2coord(sorted_knots, var[0])
-                        #     # print(coord)
-                        #     a_arr[0,i,0] = 0
-                        #     r_arr[0,i,0] = coord[0]
-                        #     z_arr[0,i,0] = coord[1]
-                        #     v_arr[0,i,:] = np.array([1,0])
-                        #
-                        # a_arr[0,-1,0]=a_arr[0,0,0]
-                        # r_arr[0,-1,0]=r_arr[0,0,0]
-                        # z_arr[0,-1,0]=0
-                        # v_arr[0,-1,:]=v_arr[0,0,:]
-                        #
-                        # res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
-                        #             'r_arr':np.rot90(r_arr, k=-1), #radius R/X
-                        #             'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
-                        #             'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
-                        #
-                        # with open(ct_file_name, 'wb') as f:
-                        # # Pickle the 'data' dictionary using the highest protocol available.
-                        #     pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
-
-                    print(' saved')
+                print(' saved')
 
 if __name__ == '__main__':
     #*********************************************************************DEFAULT PARAMETERS
