@@ -1258,14 +1258,27 @@ def find_nearest(arr, pt0):
 
     return d, i
 
-def sort_segments(arr, start_pt, stop_pt=np.array([])):
+def find_segments(arr, member_pt):
+    idx = np.where((arr[:,0,:] == member_pt) | (arr[:,1,:] == member_pt))[0]
+    print('member point',member_pt)
+    print(arr[:,0,:])
+    print(idx)
+    return arr[idx,:,:]
+
+def sort_segments(arr, start_pt, stop_pt=np.array([]), close_loop = False):
     '''Make a /chain sorting/ of segments defined in the arr. The starting point is definied by start_pt. If there is no exact pt matching, the function uses the nearest end pt
     PARAMETERS:
         arr = np.array( ix2x3 ) ex: [[[x,y,z],[x1,y1,z1]],[[x2,y2,y3],[x1,y1,z1]],...]
         start_pt = np.array( 3 ) ex: [x,y,z]
+        close_loop = False
     '''
     pt0 = start_pt
     sorted_arr = np.zeros_like(arr)
+    rest=np.array([])
+    # if arr.shape[0] == 0:
+    #     A_arr = arr[0,:]
+    #     B_arr = arr[1,:]
+    # else:
     A_arr = arr[:,0,:]
     B_arr = arr[:,1,:]
 
@@ -1289,12 +1302,34 @@ def sort_segments(arr, start_pt, stop_pt=np.array([])):
             B_arr = np.delete(B_arr, B_i[0], axis = 0)
 
         if np.array_equal(stop_pt, pt0):
+            rest = np.stack((A_arr,B_arr), axis=1)
             break
 
-    return sorted_arr[:i+1]
+    if close_loop:
+        sol = np.vstack((sorted_arr[:i+1],
+                        np.array([ [sorted_arr[-1,1,:], sorted_arr[0,0,:]] ])))
+    else:
+        sol = sorted_arr[:i+1]
 
+    return sol, rest
+
+def sort_loop(arr, start_pt, dir='cw'):
+    idx = find3dpoint(arr, start_pt)
+    # v1
+    # v2
+    sol, rest = sort_segments(arr, start_pt, close_loop = True)
+    return sol, rest
 #
 #DXF2KNOTS functions potentialy to remove
+def sort2match(arr, p):
+    if np.array_equal(s1[0], sp):
+        v=np.diff(s1, axis=0)
+        print('norm')
+    else:
+        v=np.diff(s1[::-1])
+        print('rev')
+    return v
+
 def sub_points(p1, p2):
     vect = []
     p1 = [x for x in p1[0]]

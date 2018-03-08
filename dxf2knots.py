@@ -179,8 +179,42 @@ def main(args):
                 # else:
 
                 # io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
-                io_path = cncfclib.sort_segments(elements_arr, IO_knot[0], stop_pt=stop_knot[0])
-                print(io_path)
+                io_path, io_rest = cncfclib.sort_segments(elements_arr, IO_knot[0], stop_pt=stop_knot[0])
+                z = cncfclib.find3dpoint(io_rest, io_path[-1,-1,:])
+
+                s1=np.array([io_rest[z[0]]])
+                s2=np.array([io_rest[z[1]]])
+                sp=io_path[-1,-1,:]
+
+                s1_path, s1_rest = cncfclib.sort_segments(s1, sp)
+                s2_path, s2_rest = cncfclib.sort_segments(s2, sp)
+
+                u=np.diff(s1_path[0], axis=0)[0]
+                v=np.diff(s2_path[0], axis=0)[0]
+                loop_dir = np.cross(u,v)[2]
+                if loop_dir>=0:
+                    # pt_end = s2_path[0][1]
+
+                    lo_rest=np.delete(io_rest,z[1], axis=0)
+                else:
+                    lo_rest=np.delete(io_rest,z[0], axis = 0)
+
+                lo_path, lo_rest = cncfclib.sort_segments(lo_rest, sp, close_loop=True)
+
+
+                print(s1_path)
+                print(s2_path)
+                print(u)
+                print(v)
+                print(lo_path)
+                # print(z)
+                # cncfclib.find
+                # ct_path, io_rest = cncfclib.sort_segments(io_rest, io_path[-1,-1,:], dir='cw')
+                # print(io_path)
+                # ct_elements_arr=np.setdiff1d(elements_arr, io_path, axis=0)
+                # ct_path = cncfclib.sort_segments(ct_elements_arr, IO_knot[0], stop_pt=stop_knot[0])
+                # print(io_rest)
+
                 # print(io_path.shape)
                 #
                 # last_el, excl_knot = find_l_el(path_dir, el_kt_list, sorted_knots, master_knot[0])
