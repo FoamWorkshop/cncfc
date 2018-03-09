@@ -158,12 +158,12 @@ def main(args):
                 else:
                     IO_knot = unique_knots_1
 
-                print(IO_knot)
-
+                # print(IO_knot)
+#
                 unique_knots_3 = unique_knots[np.where(counts >=3)[0]]
                 stop_knot = unique_knots_3
 
-                print(unique_knots_3)
+                # print(unique_knots_3)
                 # if len(start_coord) and len(IO_knot) % 2 == 0 and master_knot[0] is None:
                 #     print('found {} lines'.format(len(IO_knot)//2))
                 #
@@ -193,8 +193,6 @@ def main(args):
                 v=np.diff(s2_path[0], axis=0)[0]
                 loop_dir = np.cross(u,v)[2]
                 if loop_dir>=0:
-                    # pt_end = s2_path[0][1]
-
                     lo_rest=np.delete(io_rest,z[1], axis=0)
                 else:
                     lo_rest=np.delete(io_rest,z[0], axis = 0)
@@ -202,11 +200,11 @@ def main(args):
                 lo_path, lo_rest = cncfclib.sort_segments(lo_rest, sp, close_loop=True)
 
 
-                print(s1_path)
-                print(s2_path)
-                print(u)
-                print(v)
-                print(lo_path)
+                # print(s1_path)
+                # print(s2_path)
+                # print(u)
+                # print(v)
+                # print(lo_path)
                 # print(z)
                 # cncfclib.find
                 # ct_path, io_rest = cncfclib.sort_segments(io_rest, io_path[-1,-1,:], dir='cw')
@@ -268,7 +266,7 @@ def main(args):
 #SUMMARY
                 speed = 60/200
                 print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('i/o  seg.', io_path.shape[0], ct_len_1(io_path), ct_len_1(io_path)*speed))
-                # print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('loop seg.', len(ct_path),        ct_len(ct_path, sorted_knots), ct_len(ct_path, sorted_knots)*speed))
+                print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('loop seg.', lo_path.shape[0], ct_len_1(lo_path), ct_len_1(lo_path)*speed))
                 print('{0}'.format('-' * 80))
 #SUMMARY
                 if '1' in output_path:
