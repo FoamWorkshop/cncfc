@@ -148,20 +148,11 @@ def main(args):
 
                 print('dxf loaded')
 
-                knots_arr = elements_arr.reshape(-1,3)
-                unique_knots, counts = np.unique(knots_arr, return_counts=True, axis=0)
-                unique_knots_1 = unique_knots[np.where(counts == 1)[0]]
 
-                if start_coord:
-                    IO_knot_d, IO_knot_i = cncfclib.find_nearest(unique_knots_1, start_coord)
-                    IO_knot = unique_knots_1[IO_knot_i]
-                else:
-                    IO_knot = unique_knots_1
+
 
                 # print(IO_knot)
 #
-                unique_knots_3 = unique_knots[np.where(counts >=3)[0]]
-                stop_knot = unique_knots_3
 
                 # print(unique_knots_3)
                 # if len(start_coord) and len(IO_knot) % 2 == 0 and master_knot[0] is None:
@@ -179,25 +170,9 @@ def main(args):
                 # else:
 
                 # io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
-                io_path, io_rest = cncfclib.sort_segments(elements_arr, IO_knot[0], stop_pt=stop_knot[0])
-                z = cncfclib.find3dpoint(io_rest, io_path[-1,-1,:])
+                io_path, io_rest = cncfclib.find_io_path(elements_arr, start_coord)
+                lo_path, lo_rest = cncfclib.find_lo_path(io_rest, io_path[-1,-1,:])
 
-                s1=np.array([io_rest[z[0]]])
-                s2=np.array([io_rest[z[1]]])
-                sp=io_path[-1,-1,:]
-
-                s1_path, s1_rest = cncfclib.sort_segments(s1, sp)
-                s2_path, s2_rest = cncfclib.sort_segments(s2, sp)
-
-                u=np.diff(s1_path[0], axis=0)[0]
-                v=np.diff(s2_path[0], axis=0)[0]
-                loop_dir = np.cross(u,v)[2]
-                if loop_dir>=0:
-                    lo_rest=np.delete(io_rest,z[1], axis=0)
-                else:
-                    lo_rest=np.delete(io_rest,z[0], axis = 0)
-
-                lo_path, lo_rest = cncfclib.sort_segments(lo_rest, sp, close_loop=True)
 
 
                 # print(s1_path)

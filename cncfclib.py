@@ -1268,27 +1268,29 @@ def find_segments(arr, member_pt):
 def sort_segments(arr, start_pt, stop_pt=np.array([]), close_loop = False):
     '''Make a /chain sorting/ of segments defined in the arr. The starting point is definied by start_pt. If there is no exact pt matching, the function uses the nearest end pt
     PARAMETERS:
-        arr = np.array( ix2x3 ) ex: [[[x,y,z],[x1,y1,z1]],[[x2,y2,y3],[x1,y1,z1]],...]
-        start_pt = np.array( 3 ) ex: [x,y,z]
-        close_loop = False
+        arr = np.array( nx2x3 ) ex: [[[x,y,z],[x1,y1,z1]],[[x2,y2,y3],[x1,y1,z1]],...]
+        start_pt = np.array([x,y,z]) - vector
+        stop_pt = np.array([x,y,z]) - vector, default empty.
+        close_loop = False|True, default False.
+    RETURNS:
+        sol - sorted segments
+        rest - remaining segments. in general subtract sol from arr
     '''
-    pt0 = start_pt
+    #make data storage buffers
     sorted_arr = np.zeros_like(arr)
     rest=np.array([])
-    # if arr.shape[0] == 0:
-    #     A_arr = arr[0,:]
-    #     B_arr = arr[1,:]
-    # else:
+    #split segments array to 2 columns
     A_arr = arr[:,0,:]
     B_arr = arr[:,1,:]
-
+    #pt0 is a loop variable
+    pt0 = start_pt
+    #the main loop
     for i in np.arange( np.shape(arr)[0]):
 
         A_d, A_i = find_nearest(A_arr, pt0)
         B_d, B_i = find_nearest(B_arr, pt0)
 
         if A_d[0]<B_d[0]:
-            # print('first')
             sorted_arr[i,0,:]= A_arr[A_i[0]]
             sorted_arr[i,1,:]= B_arr[A_i[0]]
             pt0 = B_arr[A_i[0]]
@@ -1300,14 +1302,14 @@ def sort_segments(arr, start_pt, stop_pt=np.array([]), close_loop = False):
             pt0 = A_arr[B_i[0]]
             A_arr = np.delete(A_arr, B_i[0], axis = 0)
             B_arr = np.delete(B_arr, B_i[0], axis = 0)
-
+        #if stop_pt within current segment then break
         if np.array_equal(stop_pt, pt0):
             rest = np.stack((A_arr,B_arr), axis=1)
             break
-
+    #close loop solution array modyfication
     if close_loop:
         sol = np.vstack((sorted_arr[:i+1],
-                        np.array([ [sorted_arr[-1,1,:], sorted_arr[0,0,:]] ])))
+        np.array([ [sorted_arr[-1,1,:], sorted_arr[0,0,:]] ])))
     else:
         sol = sorted_arr[:i+1]
 
@@ -1319,7 +1321,57 @@ def sort_loop(arr, start_pt, dir='cw'):
     # v2
     sol, rest = sort_segments(arr, start_pt, close_loop = True)
     return sol, rest
-#
+
+def find_io_path(arr, start_pt=np.array([])):
+    '''finds open loop chain. the stop point is at T-junction or the free end 
+        PARAMETERS:
+            arr = np.array( nx2x3 ) ex: [[[x,y,z],[x1,y1,z1]],[[x2,y2,y3],[x1,y1,z1]],...]
+            start_pt = np.array([x,y,z]) - vector
+        RETURNS:
+            sol - sorted segments
+            rest - remaining segments. in general subtract sol from arr
+    '''
+    knots_arr = arr.reshape(-1,3)
+    unique_knots, counts = np.unique(knots_arr, return_counts=True, axis=0)
+
+    unique_knots_1 = unique_knots[np.where(counts == 1)[0]]
+    unique_knots_3 = unique_knots[np.where(counts >= 3)[0]]
+
+    stop_knot = unique_knots_3
+
+    if start_pt.size:
+        IO_knot_d, IO_knot_i = find_nearest(unique_knots_1, start_pt)
+        IO_knot = unique_knots_1[IO_knot_i]
+    else:
+        IO_knot = unique_knots_1
+
+    io_path, io_rest = sort_segments(arr, IO_knot[0], stop_pt=stop_knot[0])
+
+    return io_path, io_rest
+
+def find_lo_path(arr, start_pt):
+    z = find3dpoint(arr, start_pt)
+
+    s1=np.array([arr[z[0]]])
+    s2=np.array([arr[z[1]]])
+    sp=start_pt
+
+    s1_path, s1_rest = sort_segments(s1, sp)
+    s2_path, s2_rest = sort_segments(s2, sp)
+
+    u=np.diff(s1_path[0], axis=0)[0]
+    v=np.diff(s2_path[0], axis=0)[0]
+    loop_dir = np.cross(u,v)[2]
+
+    if loop_dir>=0:
+        lo_rest=np.delete(arr,z[1], axis=0)
+    else:
+        lo_rest=np.delete(arr,z[0], axis = 0)
+
+    lo_path, lo_rest = sort_segments(arr, sp, close_loop=True)
+
+    return lo_path, lo_rest
+
 #DXF2KNOTS functions potentialy to remove
 def sort2match(arr, p):
     if np.array_equal(s1[0], sp):
