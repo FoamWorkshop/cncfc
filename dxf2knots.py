@@ -60,9 +60,14 @@ program algorithm:
 
             #. merging dxf drawings
                 *layers with the same number before # are merged so:
-                    xxxx#y0('path with props 0')
-                    xxxx#y1('path with props 1')
-                    xxxx#y2('path with props 2')
+                    xxxx#a('path with props 0')
+                    xxxx#b('path with props 1')
+                    xxxx#1('path with props 2')
+
+            #. makeing drafting profiles
+                *layers with the same number before # are merged so:
+                    xxxx$0('path with props 0')
+                    xxxx$1('path with props 1')
 
             #. drawing keywords:
                 heating = 10(W)
@@ -130,203 +135,138 @@ def main(args):
         print('{0}{1:<30}: {2}'.format(' ' * 10, 'output paths', output_path))
         print('{0}'.format('-' * 80))
 
+        req_layer = layer_list[0]
         for i, files_dxf_member in enumerate(files_dxf):
 
             case_name = os.path.splitext(files_dxf_member)
             dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
-            dxf_layers = dxf.layers
+            dxf_layers = [var.name for var in dxf.layers]
+            print(dxf_layers)
 
-            if len(layer_list):
-                layer_name_list= [ var.name for var in dxf_layers if var.name in layer_list]
-            else:
-                layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
+            regex0 = re.compile("^({})($|[(])".format(req_layer), re.IGNORECASE)
+            regex1 = re.compile("^({})[#].*".format(req_layer), re.IGNORECASE)
+            regex2 = re.compile("^({})[$].*".format(req_layer), re.IGNORECASE)
 
-            layer_name_list= [ var.name for var in dxf_layers if layer_list[0] in var.name]
+            z0 = [layer for layer in dxf_layers for m in [regex0.search(layer)] if m]
+            z1 = [layer for layer in dxf_layers for m in [regex1.search(layer)] if m]
+            z2 = [layer for layer in dxf_layers for m in [regex2.search(layer)] if m]
 
-            for layer_name in sorted(layer_name_list):
-                knots_list, elements_arr, segment_bounds, shape_count, start_coord = cncfclib.dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc)
+            print(z0, z1, z2)
+            if z0:
+                print('simple path')
+            # dxf_layers = [var.name for var in dxf.layers]
+            if z1:
+                print('merge segmets')
+            if z2:
+                print('lofted cut!')
+            # dxf_layers = [var.name for var in dxf.layers]
+            # print(z)
+            # # if len(layer_list):
+            # z = [m.group(0) for layer in dxf_layers for m in [regex.search(layer)] if m]
+            # print(z)
+            # if len(layer_list):
+            #     layer_name_list= [ var.name for var in dxf_layers if var.name in layer_list]
+            # else:
+            #     layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
+            #
+            # layer_name_list= [ var.name for var in dxf_layers if layer_list[0] in var.name]
 
-                print('dxf loaded')
 
-
-
-
-                # print(IO_knot)
+#             for layer_name in sorted(layer_name_list):
+#                 knots_list, elements_arr, segment_bounds, shape_count, start_coord = cncfclib.dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc)
 #
-
-                # print(unique_knots_3)
-                # if len(start_coord) and len(IO_knot) % 2 == 0 and master_knot[0] is None:
-                #     print('found {} lines'.format(len(IO_knot)//2))
-                #
-                # if len(IO_knot) != 1 or len(master_knot) != 1 or IO_knot[0] == None or master_knot[0] == None:
-                #     print('{0:^20}|'.format('SKIPPED'))
-                    # for var in IO_knot:
-                    #     print("IO knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
-                    # for var in master_knot:
-                    #     print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
-                    # var =10
-                    # print("master knot error: {0} coord: {1}".format(var,knot2coord(sorted_knots, var)))
-
-                # else:
-
-                # io_path = find_path(2, el_kt_list, sorted_knots, None)  # IO path
-                io_path, io_rest = cncfclib.find_io_path(elements_arr, start_coord)
-                lo_path, lo_rest = cncfclib.find_lo_path(io_rest, io_path[-1,-1,:])
-
-
-
-                # print(s1_path)
-                # print(s2_path)
-                # print(u)
-                # print(v)
-                # print(lo_path)
-                # print(z)
-                # cncfclib.find
-                # ct_path, io_rest = cncfclib.sort_segments(io_rest, io_path[-1,-1,:], dir='cw')
-                # print(io_path)
-                # ct_elements_arr=np.setdiff1d(elements_arr, io_path, axis=0)
-                # ct_path = cncfclib.sort_segments(ct_elements_arr, IO_knot[0], stop_pt=stop_knot[0])
-                # print(io_rest)
-
-                # print(io_path.shape)
-                #
-                # last_el, excl_knot = find_l_el(path_dir, el_kt_list, sorted_knots, master_knot[0])
-                #
-                # ct_path = find_path(1, el_kt_list, sorted_knots, excl_knot[0])  # loop path
-                #
-                # io_knots_coord = [knot2coord(sorted_knots,var[0]) for var in io_path]
-                # io_knots_coord.append(knot2coord(sorted_knots,io_path[-1][1]))
-
-#EQUIVALENCE SECTION
-#                 section_list = io_knots_coord
+#                 print('dxf loaded')
+#                 io_path, io_rest = cncfclib.find_io_path(elements_arr, start_coord)
+#                 lo_path, lo_rest = cncfclib.find_lo_path(io_rest, io_path[-1,-1,:])
 #
-#                 if eq_sect:
-#                     print('drw. splits: {0:4d}'.format(segment_bounds.shape[0]))
-#                     section_list = []
-#                     section = []
-#                     updated_section_list = []
-#                     n_seg = np.linspace(0,1,eq_sect)
-#                     # print(segment_bounds)
-#                     for i, var in enumerate(io_knots_coord):
-#                         section.append(var)
-#                         # print(var)
-#                         if var in segment_bounds:
-#                             # print(var)
-#                             section_list.append(section)
-#                             section = []
-#                             section.append(var)
-#                     section_list.append(section)
+# #EQUIVALENCE SECTION
+# #                 section_list = io_knots_coord
+# #
+# #                 if eq_sect:
+# #                     print('drw. splits: {0:4d}'.format(segment_bounds.shape[0]))
+# #                     section_list = []
+# #                     section = []
+# #                     updated_section_list = []
+# #                     n_seg = np.linspace(0,1,eq_sect)
+# #                     # print(segment_bounds)
+# #                     for i, var in enumerate(io_knots_coord):
+# #                         section.append(var)
+# #                         # print(var)
+# #                         if var in segment_bounds:
+# #                             # print(var)
+# #                             section_list.append(section)
+# #                             section = []
+# #                             section.append(var)
+# #                     section_list.append(section)
+# #
+# #                     for i, section in enumerate(section_list):
+# #                         if i not in eq_sect_skip and i not in [var+len(segment_bounds) for var in eq_sect_skip]:
+# #                             # print('equivalence section {}'.format(i))
+# #                             p = np.array(section)
+# #                             l = np.sqrt(np.diff(p[:,0])**2 + np.diff(p[:,1])**2)
+# #                             l = np.cumsum(np.hstack((0,l)))
+# #                             # print(n_seg)
+# #                             # print(l)
+# #                             l_norm = l/l[-1]
+# #                             # print(l_norm)
+# #                             x=np.interp(n_seg, l_norm, p[:,0])
+# #                             y=np.interp(n_seg, l_norm, p[:,1])
+# #                             z=np.vstack((x,y)).T
+# #                             # print(z)
+# #                             section = z.tofileslist()
+# #                         updated_section_list.append(section)
+# # #flatten the list of lists
+# #                     section_list = [var for sublist in updated_section_list for var in sublist]
 #
-#                     for i, section in enumerate(section_list):
-#                         if i not in eq_sect_skip and i not in [var+len(segment_bounds) for var in eq_sect_skip]:
-#                             # print('equivalence section {}'.format(i))
-#                             p = np.array(section)
-#                             l = np.sqrt(np.diff(p[:,0])**2 + np.diff(p[:,1])**2)
-#                             l = np.cumsum(np.hstack((0,l)))
-#                             # print(n_seg)
-#                             # print(l)
-#                             l_norm = l/l[-1]
-#                             # print(l_norm)
-#                             x=np.interp(n_seg, l_norm, p[:,0])
-#                             y=np.interp(n_seg, l_norm, p[:,1])
-#                             z=np.vstack((x,y)).T
-#                             # print(z)
-#                             section = z.tofileslist()
-#                         updated_section_list.append(section)
-# #flatten the list of lists
-#                     section_list = [var for sublist in updated_section_list for var in sublist]
-
-
-
-#SUMMARY
-                speed = 60/200
-                print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('i/o  seg.', io_path.shape[0], ct_len_1(io_path), ct_len_1(io_path)*speed))
-                print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('loop seg.', lo_path.shape[0], ct_len_1(lo_path), ct_len_1(lo_path)*speed))
-                print('{0}'.format('-' * 80))
-#SUMMARY
-                if '1' in output_path:
-                    i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
-                    np.save(i_file_name, io_path)
-                    # knots2file_1(i_file_name, io_path)
-#                     size = len(section_list)
-#                     a_arr=np.zeros((1,size,1))
-#                     r_arr=np.zeros((1,size,1))
-#                     z_arr=np.zeros((1,size,1))
-#                     v_arr=np.zeros((1,size,2))
-#                     print('found: ', len(section_list),' input sections')
-#                     for i, var in enumerate(section_list):
-#                         a_arr[0,i,0]=var[0]
-#                         r_arr[0,i,0]=var[1]
-#                         z_arr[0,i,0]=0
-#                         v_arr[0,i,:]=np.array([1,0])
 #
-#                     res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
-#                                 'r_arr':np.rot90(r_arr, k=-1), #radius R/X
-#                                 'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
-#                                 'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
 #
-#                     with open(i_file_name, 'wb') as f:
-# # Pickle the 'data' dictionary using the highest protocol available.
-#                         pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
+# #SUMMARY
+#                 speed = 60/200
+#                 print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('i/o  seg.', io_path.shape[0], ct_len_1(io_path), ct_len_1(io_path)*speed))
+#                 print('{0:11}: {1:4d} | cut len: {2:4.0f} | cut time {3:4.0f}s'.format('loop seg.', lo_path.shape[0], ct_len_1(lo_path), ct_len_1(lo_path)*speed))
+#                 print('{0}'.format('-' * 80))
+# #SUMMARY
+#                 if '1' in output_path:
+#                     i_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '1', 'knt')
+#                     np.save(i_file_name, io_path)
+#
+#                 if '3' in output_path:
+#                     o_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '3', 'knt')
+#                     np.save(o_file_name, io_path[::-1])
+#
+#                 if '2' in output_path:
+#                     ct_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '2', 'knt')
+#                     # knots2file(ct_file_name, ct_path, sorted_knots)
+#                     # size = len(section_list)+1
+#                     # a_arr=np.zeros((1,size,1))
+#                     # r_arr=np.zeros((1,size,1))
+#                     # z_arr=np.zeros((1,size,1))
+#                     # v_arr=np.zeros((1,size,2))
+#                     #
+#                     # print('found: ', len(section_list)+1,' shape sections')
+#                     # for i, var in enumerate(ct_path):
+#                     #     coord = knot2coord(sorted_knots, var[0])
+#                     #     # print(coord)
+#                     #     a_arr[0,i,0] = 0
+#                     #     r_arr[0,i,0] = coord[0]
+#                     #     z_arr[0,i,0] = coord[1]
+#                     #     v_arr[0,i,:] = np.array([1,0])
+#                     #
+#                     # a_arr[0,-1,0]=a_arr[0,0,0]
+#                     # r_arr[0,-1,0]=r_arr[0,0,0]
+#                     # z_arr[0,-1,0]=0
+#                     # v_arr[0,-1,:]=v_arr[0,0,:]
+#                     #
+#                     # res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
+#                     #             'r_arr':np.rot90(r_arr, k=-1), #radius R/X
+#                     #             'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
+#                     #             'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
+#                     #
+#                     # with open(ct_file_name, 'wb') as f:
+#                     # # Pickle the 'data' dictionary using the highest protocol available.
+#                     #     pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
 
-                if '3' in output_path:
-                    o_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '3', 'knt')
-                    np.save(o_file_name, io_path[::-1])
-                    # knots2file_1(o_file_name, section_list[::-1], z_coord)
-                    # size = len(section_list)
-                    # a_arr=np.zeros((1,size,1))
-                    # r_arr=np.zeros((1,size,1))
-                    # z_arr=np.zeros((1,size,1))
-                    # v_arr=np.zeros((1,size,2))
-                    # print('found: ', len(section_list),' output sections')
-                    # for i, var in enumerate(section_list):
-                    #     a_arr[0,i,0]=var[0]
-                    #     r_arr[0,i,0]=var[1]
-                    #     z_arr[0,i,0]=0
-                    #     v_arr[0,i,:]=np.array([1,0])
-                    #
-                    # res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
-                    #             'r_arr':np.rot90(r_arr, k=-1), #radius R/X
-                    #             'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
-                    #             'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
-                    #
-                    # with open(o_file_name, 'wb') as f:
-                    # # Pickle the 'data' dictionary using the highest protocol available.
-                    #     pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
-
-                if '2' in output_path:
-                    ct_file_name = '{1}{2}.{3}'.format(case_name[0], layer_name, '2', 'knt')
-                    # knots2file(ct_file_name, ct_path, sorted_knots)
-                    # size = len(section_list)+1
-                    # a_arr=np.zeros((1,size,1))
-                    # r_arr=np.zeros((1,size,1))
-                    # z_arr=np.zeros((1,size,1))
-                    # v_arr=np.zeros((1,size,2))
-                    #
-                    # print('found: ', len(section_list)+1,' shape sections')
-                    # for i, var in enumerate(ct_path):
-                    #     coord = knot2coord(sorted_knots, var[0])
-                    #     # print(coord)
-                    #     a_arr[0,i,0] = 0
-                    #     r_arr[0,i,0] = coord[0]
-                    #     z_arr[0,i,0] = coord[1]
-                    #     v_arr[0,i,:] = np.array([1,0])
-                    #
-                    # a_arr[0,-1,0]=a_arr[0,0,0]
-                    # r_arr[0,-1,0]=r_arr[0,0,0]
-                    # z_arr[0,-1,0]=0
-                    # v_arr[0,-1,:]=v_arr[0,0,:]
-                    #
-                    # res_dict = {'a_arr':np.rot90(a_arr, k=-1), #rotation angle
-                    #             'r_arr':np.rot90(r_arr, k=-1), #radius R/X
-                    #             'z_arr':np.rot90(z_arr, k=-1), #height Z/Y
-                    #             'v_arr':np.rot90(v_arr, k=-1)} #slope (useful for tapered wings)
-                    #
-                    # with open(ct_file_name, 'wb') as f:
-                    # # Pickle the 'data' dictionary using the highest protocol available.
-                    #     pickle.dump(res_dict, f, pickle.HIGHEST_PROTOCOL)
-
-                print(' saved')
+                # print(' saved')
 
 if __name__ == '__main__':
     #*********************************************************************DEFAULT PARAMETERS
