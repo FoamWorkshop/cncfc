@@ -73,7 +73,7 @@ program algorithm:
                 heating = 10(W)
                 angle = 90(deg)
                 radius = 100(mm)
-                cut_speed = 200(mm/min)
+                feed = 200(mm/min)
                 start/circle center - indicates begining of an unlooped path
 
             #. data structure:
@@ -141,7 +141,7 @@ def main(args):
             case_name = os.path.splitext(files_dxf_member)
             dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
             dxf_layers = [var.name for var in dxf.layers]
-            print(dxf_layers)
+            # print(dxf_layers)
 
             regex0 = re.compile("^({})($|[(])".format(req_layer), re.IGNORECASE)
             regex1 = re.compile("^({})[#].*".format(req_layer), re.IGNORECASE)
@@ -151,12 +151,21 @@ def main(args):
             z1 = [layer for layer in dxf_layers for m in [regex1.search(layer)] if m]
             z2 = [layer for layer in dxf_layers for m in [regex2.search(layer)] if m]
 
-            print(z0, z1, z2)
+            # print(z0, z1, z2)
             if z0:
-                print('simple path')
-            # dxf_layers = [var.name for var in dxf.layers]
+                print('single layer')
+                struct_data, start_coord_arr = cncfclib.dxf_read_1(dxf, z0, dec_acc, n_arc, l_arc)
+                print(struct_data)
+
             if z1:
-                print('merge segmets')
+                print('merge layers: ', z1)
+                struct_data_list = []
+                struct_data, start_coord_arr = cncfclib.dxf_read_1(dxf, z1, dec_acc, n_arc, l_arc)
+                print(struct_data)
+                print(struct_data.shape[0])
+
+                # data_arr = np.vstack(struct_data_list)
+
             if z2:
                 print('lofted cut!')
             # dxf_layers = [var.name for var in dxf.layers]
@@ -172,11 +181,12 @@ def main(args):
             # layer_name_list= [ var.name for var in dxf_layers if layer_list[0] in var.name]
 
 
-#             for layer_name in sorted(layer_name_list):
-#                 knots_list, elements_arr, segment_bounds, shape_count, start_coord = cncfclib.dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc)
+            # for layer_name in sorted(layer_name_list):
+#             for layer_name in sorted(z1):
+#                 knots_list, elements_arr, segment_bounds, shape_count, start_coord, struct_data = cncfclib.dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc)
 #
 #                 print('dxf loaded')
-#                 io_path, io_rest = cncfclib.find_io_path(elements_arr, start_coord)
+# #                 io_path, io_rest = cncfclib.find_io_path(elements_arr, start_coord)
 #                 lo_path, lo_rest = cncfclib.find_lo_path(io_rest, io_path[-1,-1,:])
 #
 # #EQUIVALENCE SECTION

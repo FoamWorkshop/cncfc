@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from collections import Iterable
 from scipy import spatial
-
+import re
 # def flatten(items):
 #     """Yield items from any nested iterable; see REF."""
 #     for x in items:
@@ -1050,102 +1050,6 @@ def make_chains(section_list):
         prof=make_loop(p_arr)
     return chain_list
 
-def dxf_read(dxf, layer_name, dec_acc, n_arc, l_arc):
-    tol = dec_acc
-    knots_list = []
-    elements_list = []
-    hrd_knots_list=[]
-    hrd_element_list=[]
-    segment_bounds=[]
-    start_coord=()
-    line_count = 0
-    arc_count = 0
-    circle_count = 0
-    path_offset =[0,0,0]
-
-    for shape in dxf.entities:
-        if shape.layer == layer_name:
-            if shape.dxftype == 'SPLINE':
-
-                print('degree: ',shape.degree)
-                print('start tangent: ',shape.start_tangent)
-                print('end tangent: ',shape.end_tangent)
-                print('control points: ',shape.control_points)
-                print('fit points: ',shape.fit_points)
-                print('knots: ',shape.knots)
-                print('weights: ',shape.weights)
-                print('normal vector: ',shape.normal_vector)
-
-            if shape.dxftype == 'CIRCLE':
-                circle_count += 1
-                p1 = tuple(round(x, tol) for x in shape.center)
-                segment_bounds.append(p1)
-
-            if shape.dxftype == 'LINE':
-                line_count += 1
-                p1 = tuple(round(x, tol) for x in shape.start)
-                p2 = tuple(round(x, tol) for x in shape.end)
-                if p1!=p2:
-                    knots_list.append(p1)
-                    knots_list.append(p2)
-                    elements_list.append([p1, p2])
-
-            if shape.dxftype == 'MTEXT':
-                if shape.raw_text == 'coord_0':
-                    # print('path offset: {}'.format(shape.insert))
-                    path_offset = tuple(round(x, tol) for x in shape.insert)
-                    print('path offset: {}'.format(path_offset))
-
-                if shape.raw_text == 'start':
-                    # print('path offset: {}'.format(shape.insert))
-                    start_coord = tuple(round(x, tol) for x in shape.insert)
-                    print('start coord: {}'.format(start_coord))
-
-            if shape.dxftype == 'ARC':
-                arc_count += 1
-                ARC_knots_list = []
-                n = n_arc  # number of segments
-                min_len = l_arc
-                O = shape.center
-                R = shape.radius
-                angl_1 = shape.start_angle * np.pi / 180
-                angl_2 = shape.end_angle * np.pi / 180
-
-                if angl_2 >= angl_1:
-                    angl_list = np.linspace(angl_1, angl_2, n)
-                else:
-                    angl_list = np.linspace(angl_1, angl_2 + 2 * np.pi, n)
-
-                arc_len = R * np.absolute(angl_2 - angl_1)
-
-                if arc_len / n < min_len:
-                    n = max(int(arc_len / min_len), 3)
-
-                for angl in angl_list:
-                    ARC_knots_list.append(
-                        (round(O[0] + R * np.cos(angl), tol), round(O[1] + R * np.sin(angl), tol), O[2]))
-
-                for i in range(n - 1):
-                    elements_list.append(ARC_knots_list[i:i + 2])
-
-                knots_list.extend(ARC_knots_list)
-
-    # print 'remove duplicates'
-    # print 'number of segments: ', len(elements_list)
-
-    hrd_element_list.append(elements_list[0])
-
-    for var in elements_list:
-        tmp=[var for hrd_var in hrd_element_list if (var[0] in hrd_var) and (var[1] in hrd_var)]
-        if  not len(tmp):
-            hrd_element_list.append(var)
-            # print 'removed elemts: ', len(elements_list)-len(hrd_element_list)
-
-
-    knots_list=[(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in knots_list]
-    hrd_element_list=[[(var1[0]-path_offset[0], var1[1]-path_offset[1], var1[2]-path_offset[2]), (var2[0]-path_offset[0], var2[1]-path_offset[1], var2[2]-path_offset[2])]for var1, var2 in hrd_element_list]
-    segment_bounds = [(var[0]-path_offset[0], var[1]-path_offset[1], var[2]-path_offset[2]) for var in segment_bounds]
-    return (knots_list, hrd_element_list, segment_bounds, [line_count, arc_count], start_coord)
 
 def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     tol = dec_acc
@@ -1159,97 +1063,135 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     arc_count = 0
     circle_count = 0
     path_offset =[0,0,0]
+    struct_data_list=[]
+    dxf_data = np.dtype([('segm', np.float, [2,3]),
+                         ('offset', np.float, 3),
+                         ('feed', np.float),
+                         ('power', np.float),
+                         ('angle', np.float),
+                         ('radius', np.float),
+                         ('source', np.unicode_, 32)])
 
-    for shape in dxf.entities:
-        if shape.layer == layer_name:
-            if shape.dxftype == 'SPLINE':
 
-                print('degree: ',shape.degree)
-                print('start tangent: ',shape.start_tangent)
-                print('end tangent: ',shape.end_tangent)
-                print('control points: ',shape.control_points)
-                print('fit points: ',shape.fit_points)
-                print('knots: ',shape.knots)
-                print('weights: ',shape.weights)
-                print('normal vector: ',shape.normal_vector)
+    # dxf_ent = dxf.entities
+    # print(dxf_ent['LINE'])
+    # print('processing: ',layer_name)
+    for layer in layer_name:
 
-            if shape.dxftype == 'CIRCLE':
-                circle_count += 1
-                p1 = tuple(round(x, tol) for x in shape.center)
-                segment_bounds.append(p1)
+        elements_list = []
+        hrd_element_list =[]
+        layer_props = {'feed':0, 'offset':np.array([0,0,0]),'power':0, 'angle':0, 'radius':0, 'source':''}
 
-            if shape.dxftype == 'LINE':
-                line_count += 1
-                p1 = tuple(round(x, tol) for x in shape.start)
-                p2 = tuple(round(x, tol) for x in shape.end)
-                if p1!=p2:
-                    knots_list.append(p1)
-                    knots_list.append(p2)
-                    elements_list.append([p1, p2])
+        for shape in dxf.entities:
+            if shape.layer == layer and shape.dxftype == 'MTEXT':
+                layer_props['feed']=np.array(re.findall('(feed) *= *([.0-9]+)', shape.raw_text)[0][1], dtype=np.float)
+                layer_props['power']=np.array(re.findall('(power) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
+                layer_props['angle']=np.array(re.findall('(angle) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
+                layer_props['radius']=np.array(re.findall('(radius) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
+                layer_props['source']=np.array(shape.layer, dtype=np.unicode_)
 
-            if shape.dxftype == 'MTEXT':
                 if shape.raw_text == 'coord_0':
-                    # print('path offset: {}'.format(shape.insert))
-                    path_offset = tuple(round(x, tol) for x in shape.insert)
+                    path_offset = array((round(x, tol) for x in shape.insert))
+                    layer_props['offset']=path_offset
                     print('path offset: {}'.format(path_offset))
 
                 if shape.raw_text == 'start':
-                    # print('path offset: {}'.format(shape.insert))
                     start_coord = tuple(round(x, tol) for x in shape.insert)
                     print('start coord: {}'.format(start_coord))
 
-            if shape.dxftype == 'ARC':
-                arc_count += 1
-                ARC_knots_list = []
-                n = n_arc  # number of segments
-                min_len = l_arc
-                O = shape.center
-                R = shape.radius
-                angl_1 = shape.start_angle * np.pi / 180
-                angl_2 = shape.end_angle * np.pi / 180
+        for shape in dxf.entities:
+            if shape.layer == layer:
+                if shape.dxftype == 'SPLINE':
+                    print('degree: ',shape.degree)
+                    print('start tangent: ',shape.start_tangent)
+                    print('end tangent: ',shape.end_tangent)
+                    print('control points: ',shape.control_points)
+                    print('fit points: ',shape.fit_points)
+                    print('knots: ',shape.knots)
+                    print('weights: ',shape.weights)
+                    print('normal vector: ',shape.normal_vector)
 
-                if angl_2 >= angl_1:
-                    angl_list = np.linspace(angl_1, angl_2, n)
-                else:
-                    angl_list = np.linspace(angl_1, angl_2 + 2 * np.pi, n)
+                # if shape.dxftype == 'CIRCLE':
+                #     circle_count += 1
+                #     p1 = tuple(round(x, tol) for x in shape.center)
+                #     segment_bounds.append(p1)
 
-                arc_len = R * np.absolute(angl_2 - angl_1)
-
-                if arc_len / n < min_len:
-                    n = max(int(arc_len / min_len), 3)
-
-                for angl in angl_list:
-                    ARC_knots_list.append(
-                        (round(O[0] + R * np.cos(angl), tol), round(O[1] + R * np.sin(angl), tol), O[2]))
-
-                for i in range(n - 1):
-                    elements_list.append(ARC_knots_list[i:i + 2])
-
-                knots_list.extend(ARC_knots_list)
+                if shape.dxftype == 'LINE':
+                    line_count += 1
+                    p1 = tuple(round(x, tol) for x in shape.start)
+                    p2 = tuple(round(x, tol) for x in shape.end)
+                    if p1!=p2:
+                        knots_list.append(p1)
+                        knots_list.append(p2)
+                        elements_list.append([p1, p2])
 
 
-    hrd_element_list.append(elements_list[0])
+                if shape.dxftype == 'ARC':
+                    arc_count += 1
+                    ARC_knots_list = []
+                    n = n_arc  # number of segments
+                    min_len = l_arc
+                    O = shape.center
+                    R = shape.radius
+                    angl_1 = shape.start_angle * np.pi / 180
+                    angl_2 = shape.end_angle * np.pi / 180
 
-    for var in elements_list:
-        tmp=[var for hrd_var in hrd_element_list if (var[0] in hrd_var) and (var[1] in hrd_var)]
-        if  not len(tmp):
-            hrd_element_list.append(var)
+                    if angl_2 >= angl_1:
+                        angl_list = np.linspace(angl_1, angl_2, n)
+                    else:
+                        angl_list = np.linspace(angl_1, angl_2 + 2 * np.pi, n)
 
-    element_arr=np.array(hrd_element_list)
-    knots_arr=np.array(knots_list)
-    segment_boundaries = np.array(segment_bounds)
-    path_offset_arr = np.array(path_offset)
+                    arc_len = R * np.absolute(angl_2 - angl_1)
+
+                    if arc_len / n < min_len:
+                        n = max(int(arc_len / min_len), 3)
+
+                    for angl in angl_list:
+                        ARC_knots_list.append(
+                            (round(O[0] + R * np.cos(angl), tol), round(O[1] + R * np.sin(angl), tol), O[2]))
+
+                    for i in range(n - 1):
+                        elements_list.append(ARC_knots_list[i:i + 2])
+
+                    knots_list.extend(ARC_knots_list)
+
+
+        hrd_element_list.append(elements_list[0])
+
+        for var in elements_list:
+            tmp=[var for hrd_var in hrd_element_list if (var[0] in hrd_var) and (var[1] in hrd_var)]
+            if  not len(tmp):
+                hrd_element_list.append(var)
+
+        element_arr=np.array(hrd_element_list)
+        struct_data=np.zeros(element_arr.shape[0], dtype = dxf_data)
+        # print(struct_data['feed'])
+        for i, segment in enumerate(element_arr):
+            struct_data[i]['segm']=segment
+            struct_data[i]['offset']=layer_props['offset']
+            struct_data[i]['feed']=layer_props['feed']
+            struct_data[i]['power'] =layer_props['power']
+            struct_data[i]['angle'] =layer_props['angle']
+            struct_data[i]['radius']=layer_props['radius']
+            struct_data[i]['source']=layer_props['source']
+
+        struct_data_list.append(struct_data)
+
+    # knots_arr=np.array(knots_list)
+    # segment_boundaries = np.array(segment_bounds)
+    # path_offset_arr = np.array(path_offset)
     start_coord_arr = np.array(start_coord)
-    knots_arr -=path_offset_arr
-    element_arr -=path_offset_arr
+    # knots_arr -=path_offset_arr
+    # element_arr -=path_offset_arr
+    #
+    # if segment_bounds:
+    #     segment_boundaries -=path_offset_arr
+    #
+    # if start_coord:
+    #     start_coord -= path_offset_arr
 
-    if segment_bounds:
-        segment_boundaries -=path_offset_arr
-
-    if start_coord:
-        start_coord -= path_offset_arr
-
-    return (knots_arr, element_arr, segment_boundaries, [line_count, arc_count], start_coord_arr)
+    # print(struct_data)
+    return (np.concatenate(struct_data_list), start_coord_arr)
 
 def find_nearest(arr, pt0):
 
@@ -1323,7 +1265,7 @@ def sort_loop(arr, start_pt, dir='cw'):
     return sol, rest
 
 def find_io_path(arr, start_pt=np.array([])):
-    '''finds open loop chain. the stop point is at T-junction or the free end 
+    '''finds open loop chain. the stop point is at T-junction or the free end
         PARAMETERS:
             arr = np.array( nx2x3 ) ex: [[[x,y,z],[x1,y1,z1]],[[x2,y2,y3],[x1,y1,z1]],...]
             start_pt = np.array([x,y,z]) - vector
