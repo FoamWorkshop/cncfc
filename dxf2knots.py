@@ -154,32 +154,38 @@ def main(args):
             # print(z0, z1, z2)
             if z0:
                 print('single layer')
-                struct_data, start_coord_arr = cncfclib.dxf_read_1(dxf, z0, dec_acc, n_arc, l_arc)
-                print(struct_data)
+                struct_data_list = []
+                struct_data, prop_data, prop_dict, start_coord_arr = cncfclib.dxf_read_1(dxf, z0, dec_acc, n_arc, l_arc)
+                io_path, io_rest, io_path_prop, io_rest_prop = cncfclib.find_io_path(struct_data, prop_data, start_coord_arr)
+                pt0 = io_path[-1,-1]
+                lo_path, lo_rest, lo_path_prop, lo_rest_prop = cncfclib.find_lo_path(io_rest, io_rest_prop, pt0, return_idx=True)
 
             if z1:
                 print('merge layers: ', z1)
                 struct_data_list = []
-                struct_data, start_coord_arr = cncfclib.dxf_read_1(dxf, z1, dec_acc, n_arc, l_arc)
-                print(struct_data)
-                print(struct_data.shape[0])
+                struct_data, prop_data, prop_dict, start_coord_arr = cncfclib.dxf_read_1(dxf, z1, dec_acc, n_arc, l_arc)
+                io_path, io_rest, io_path_prop, io_rest_prop = cncfclib.find_io_path(struct_data, prop_data, start_coord_arr)
+                pt0 = io_path[-1,-1]
+                lo_path, lo_rest, lo_path_prop, lo_rest_prop = cncfclib.find_lo_path(io_rest, io_rest_prop, pt0, return_idx=True)
+
+                # for i, var in enumerate(lo_path):
+                #     print(i, var)
+                #
+                # for i, var in enumerate(lo_path_prop):
+                #     print(i, var)
+                #
+                # for i, var in enumerate(lo_rest):
+                #     print(i, var)
+                #
+                # for i, var in enumerate(lo_rest_prop):
+                #     print(i, var)
+
+                # print(lo_path)
 
                 # data_arr = np.vstack(struct_data_list)
 
             if z2:
                 print('lofted cut!')
-            # dxf_layers = [var.name for var in dxf.layers]
-            # print(z)
-            # # if len(layer_list):
-            # z = [m.group(0) for layer in dxf_layers for m in [regex.search(layer)] if m]
-            # print(z)
-            # if len(layer_list):
-            #     layer_name_list= [ var.name for var in dxf_layers if var.name in layer_list]
-            # else:
-            #     layer_name_list = [var.name for var in dxf_layers if not ('~' in var.name or len(var.name)==1)]
-            #
-            # layer_name_list= [ var.name for var in dxf_layers if layer_list[0] in var.name]
-
 
             # for layer_name in sorted(layer_name_list):
 #             for layer_name in sorted(z1):

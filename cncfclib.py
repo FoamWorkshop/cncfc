@@ -1064,57 +1064,49 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     circle_count = 0
     path_offset =[0,0,0]
     struct_data_list=[]
-    dxf_data = np.dtype([('segm', np.float, [2,3]),
-                         ('offset', np.float, 3),
-                         ('feed', np.float),
-                         ('power', np.float),
-                         ('angle', np.float),
-                         ('radius', np.float),
-                         ('source', np.unicode_, 32)])
+    dxf_data = np.dtype([('segm', np.float, [2,3]),('props', np.int)])
+                         # ('offset', np.float, 3),
+                         # ('angle', np.float),
+                         # ('radius', np.float),
+                         #
+                         # ('power', np.float),
+                         # ('source', np.unicode_, 32)])
 
 
     # dxf_ent = dxf.entities
     # print(dxf_ent['LINE'])
     # print('processing: ',layer_name)
-    for layer in layer_name:
+    prop_list=[]
+    elements_list = []
+    prop_dict={}
+    for p, layer in enumerate(layer_name):
 
-        elements_list = []
-        hrd_element_list =[]
-        layer_props = {'feed':0, 'offset':np.array([0,0,0]),'power':0, 'angle':0, 'radius':0, 'source':''}
+        prop_dict = {p:{'feed':0,
+                        'offset':np.array([0,0,0]),
+                        'power':0,
+                        'angle':0,
+                        'radius':0,
+                        'source':layer_name}}
 
         for shape in dxf.entities:
             if shape.layer == layer and shape.dxftype == 'MTEXT':
-                layer_props['feed']=np.array(re.findall('(feed) *= *([.0-9]+)', shape.raw_text)[0][1], dtype=np.float)
-                layer_props['power']=np.array(re.findall('(power) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
-                layer_props['angle']=np.array(re.findall('(angle) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
-                layer_props['radius']=np.array(re.findall('(radius) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
-                layer_props['source']=np.array(shape.layer, dtype=np.unicode_)
+                prop_dict['feed']=np.array(re.findall('(feed) *= *([.0-9]+)', shape.raw_text)[0][1], dtype=np.float)
+                prop_dict['power']=np.array(re.findall('(power) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
+                prop_dict['angle']=np.array(re.findall('(angle) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
+                prop_dict['radius']=np.array(re.findall('(radius) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
 
                 if shape.raw_text == 'coord_0':
                     path_offset = array((round(x, tol) for x in shape.insert))
-                    layer_props['offset']=path_offset
-                    print('path offset: {}'.format(path_offset))
+                    prop_dict['offset']=path_offset
+                    # print('path offset: {}'.format(path_offset))
 
                 if shape.raw_text == 'start':
                     start_coord = tuple(round(x, tol) for x in shape.insert)
                     print('start coord: {}'.format(start_coord))
 
+
         for shape in dxf.entities:
             if shape.layer == layer:
-                if shape.dxftype == 'SPLINE':
-                    print('degree: ',shape.degree)
-                    print('start tangent: ',shape.start_tangent)
-                    print('end tangent: ',shape.end_tangent)
-                    print('control points: ',shape.control_points)
-                    print('fit points: ',shape.fit_points)
-                    print('knots: ',shape.knots)
-                    print('weights: ',shape.weights)
-                    print('normal vector: ',shape.normal_vector)
-
-                # if shape.dxftype == 'CIRCLE':
-                #     circle_count += 1
-                #     p1 = tuple(round(x, tol) for x in shape.center)
-                #     segment_bounds.append(p1)
 
                 if shape.dxftype == 'LINE':
                     line_count += 1
@@ -1124,7 +1116,7 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
                         knots_list.append(p1)
                         knots_list.append(p2)
                         elements_list.append([p1, p2])
-
+                        prop_list.append(p)
 
                 if shape.dxftype == 'ARC':
                     arc_count += 1
@@ -1152,46 +1144,27 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
 
                     for i in range(n - 1):
                         elements_list.append(ARC_knots_list[i:i + 2])
+                        prop_list.append(p)
 
-                    knots_list.extend(ARC_knots_list)
 
 
-        hrd_element_list.append(elements_list[0])
+        # struct_data=np.zeros(element_arr.shape[0], dtype = dxf_data)
+        #
+        # for i, segment in enumerate(element_arr):
+        #     struct_data[i]['segm']=segment
+        #     struct_data[i]['props']=p
+        #     # struct_data[i]['feed']=layer_props['feed']
+        #     # struct_data[i]['power'] =layer_props['power']
+        #     # struct_data[i]['angle'] =layer_props['angle']
+        #     # struct_data[i]['radius']=layer_props['radius']
+        #     # struct_data[i]['source']=layer_props['source']
+        #
+        # struct_data_list.append(struct_data)
 
-        for var in elements_list:
-            tmp=[var for hrd_var in hrd_element_list if (var[0] in hrd_var) and (var[1] in hrd_var)]
-            if  not len(tmp):
-                hrd_element_list.append(var)
-
-        element_arr=np.array(hrd_element_list)
-        struct_data=np.zeros(element_arr.shape[0], dtype = dxf_data)
-        # print(struct_data['feed'])
-        for i, segment in enumerate(element_arr):
-            struct_data[i]['segm']=segment
-            struct_data[i]['offset']=layer_props['offset']
-            struct_data[i]['feed']=layer_props['feed']
-            struct_data[i]['power'] =layer_props['power']
-            struct_data[i]['angle'] =layer_props['angle']
-            struct_data[i]['radius']=layer_props['radius']
-            struct_data[i]['source']=layer_props['source']
-
-        struct_data_list.append(struct_data)
-
-    # knots_arr=np.array(knots_list)
-    # segment_boundaries = np.array(segment_bounds)
-    # path_offset_arr = np.array(path_offset)
+    element_arr=np.array(elements_list)
+    prop_arr=np.array(prop_list)
     start_coord_arr = np.array(start_coord)
-    # knots_arr -=path_offset_arr
-    # element_arr -=path_offset_arr
-    #
-    # if segment_bounds:
-    #     segment_boundaries -=path_offset_arr
-    #
-    # if start_coord:
-    #     start_coord -= path_offset_arr
-
-    # print(struct_data)
-    return (np.concatenate(struct_data_list), start_coord_arr)
+    return (element_arr, prop_arr, prop_dict, start_coord_arr)
 
 def find_nearest(arr, pt0):
 
@@ -1207,55 +1180,98 @@ def find_segments(arr, member_pt):
     print(idx)
     return arr[idx,:,:]
 
-def sort_segments(arr, start_pt, stop_pt=np.array([]), close_loop = False):
+def sort_segments(arr, start_pt, stop_pt=np.array([]), close_loop = False, return_idx=False, prop_data=np.array([])):
     '''Make a /chain sorting/ of segments defined in the arr. The starting point is definied by start_pt. If there is no exact pt matching, the function uses the nearest end pt
     PARAMETERS:
         arr = np.array( nx2x3 ) ex: [[[x,y,z],[x1,y1,z1]],[[x2,y2,y3],[x1,y1,z1]],...]
         start_pt = np.array([x,y,z]) - vector
         stop_pt = np.array([x,y,z]) - vector, default empty.
         close_loop = False|True, default False.
+        return_idx = False|True, default False. If True the function returns seorted indices of arr
     RETURNS:
         sol - sorted segments
         rest - remaining segments. in general subtract sol from arr
     '''
-    #make data storage buffers
-    sorted_arr = np.zeros_like(arr)
     rest=np.array([])
     #split segments array to 2 columns
     A_arr = arr[:,0,:]
     B_arr = arr[:,1,:]
+    C_arr = prop_data
     #pt0 is a loop variable
     pt0 = start_pt
-    #the main loop
+
+    # print(prop_data)
+
+        #make data storage buffers
+    sorted_arr = np.zeros_like(arr)
+    sorted_prop_arr = np.zeros_like(prop_data)
+    rest = np.array([[],[]])
+    rest_prop = np.array([])
+
     for i in np.arange( np.shape(arr)[0]):
+        #find the nearest point to pt0
+        #return X_d - distance; X_i - position in the arr
 
         A_d, A_i = find_nearest(A_arr, pt0)
         B_d, B_i = find_nearest(B_arr, pt0)
 
+        #If a point in A_arr is closer to pt0
         if A_d[0]<B_d[0]:
+
             sorted_arr[i,0,:]= A_arr[A_i[0]]
             sorted_arr[i,1,:]= B_arr[A_i[0]]
+            if prop_data.size>0:
+                sorted_prop_arr[i]= C_arr[A_i[0]]
+
             pt0 = B_arr[A_i[0]]
             A_arr = np.delete(A_arr, A_i[0], axis = 0)
             B_arr = np.delete(B_arr, A_i[0], axis = 0)
+            if prop_data.size>0:
+                C_arr = np.delete(C_arr, A_i[0], axis = 0)
+
         else:
-            sorted_arr[i,1,:]= A_arr[B_i[0]]
+
             sorted_arr[i,0,:]= B_arr[B_i[0]]
+            sorted_arr[i,1,:]= A_arr[B_i[0]]
+            if prop_data.size>0:
+                sorted_prop_arr[i]= C_arr[B_i[0]]
+
             pt0 = A_arr[B_i[0]]
+
             A_arr = np.delete(A_arr, B_i[0], axis = 0)
             B_arr = np.delete(B_arr, B_i[0], axis = 0)
+            if prop_data.size>0:
+                C_arr = np.delete(C_arr, B_i[0], axis = 0)
+
         #if stop_pt within current segment then break
         if np.array_equal(stop_pt, pt0):
             rest = np.stack((A_arr,B_arr), axis=1)
+            rest_prop = C_arr
             break
+# print(sorted_arr)
     #close loop solution array modyfication
-    if close_loop:
-        sol = np.vstack((sorted_arr[:i+1],
-        np.array([ [sorted_arr[-1,1,:], sorted_arr[0,0,:]] ])))
-    else:
-        sol = sorted_arr[:i+1]
+    if prop_data.size>0:
+        if close_loop:
+            sol_io = np.vstack((sorted_arr[:i+1],
+                             np.array([ [sorted_arr[-1,1,:], sorted_arr[0,0,:]] ])))
+            sol_prop = np.vstack((sorted_prop_arr[:i+1], sorted_prop_arr[-1]))
+        else:
+            sol_io = sorted_arr[:i+1]
+            sol_prop = sorted_prop_arr[:i+1]
 
-    return sol, rest
+        sol = (sol_io, rest, sol_prop, rest_prop)
+
+    else:
+        if close_loop:
+            sol_io = np.vstack((sorted_arr[:i+1],
+                            np.array([ [sorted_arr[-1,1,:], sorted_arr[0,0,:]] ])))
+
+        else:
+            sol_io = sorted_arr[:i+1]
+
+        sol = (sol_io, rest)
+
+    return sol
 
 def sort_loop(arr, start_pt, dir='cw'):
     idx = find3dpoint(arr, start_pt)
@@ -1264,7 +1280,7 @@ def sort_loop(arr, start_pt, dir='cw'):
     sol, rest = sort_segments(arr, start_pt, close_loop = True)
     return sol, rest
 
-def find_io_path(arr, start_pt=np.array([])):
+def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False):
     '''finds open loop chain. the stop point is at T-junction or the free end
         PARAMETERS:
             arr = np.array( nx2x3 ) ex: [[[x,y,z],[x1,y1,z1]],[[x2,y2,y3],[x1,y1,z1]],...]
@@ -1273,7 +1289,11 @@ def find_io_path(arr, start_pt=np.array([])):
             sol - sorted segments
             rest - remaining segments. in general subtract sol from arr
     '''
+
     knots_arr = arr.reshape(-1,3)
+    # print('TTT')
+    # print(knots_arr)
+
     unique_knots, counts = np.unique(knots_arr, return_counts=True, axis=0)
 
     unique_knots_1 = unique_knots[np.where(counts == 1)[0]]
@@ -1287,13 +1307,16 @@ def find_io_path(arr, start_pt=np.array([])):
     else:
         IO_knot = unique_knots_1
 
-    io_path, io_rest = sort_segments(arr, IO_knot[0], stop_pt=stop_knot[0])
+    print('IO knot: ',IO_knot)
+    # print('IO knot: ',IO_knot)
+    # print(prop_data)
+    return sort_segments(arr, IO_knot[0], stop_pt=stop_knot[0], prop_data = prop_data, return_idx=return_idx)
 
-    return io_path, io_rest
-
-def find_lo_path(arr, start_pt):
+def find_lo_path(arr, prop_data, start_pt, return_idx=False, close_loop = True):
+    # print(arr)
+    # print(start_pt)
     z = find3dpoint(arr, start_pt)
-
+    # print('z:', z)
     s1=np.array([arr[z[0]]])
     s2=np.array([arr[z[1]]])
     sp=start_pt
@@ -1307,12 +1330,23 @@ def find_lo_path(arr, start_pt):
 
     if loop_dir>=0:
         lo_rest=np.delete(arr,z[1], axis=0)
+        lo_rest_prop=np.delete(prop_data,z[1])
+        removed_seg = arr[z[1]]
+        removed_prop = prop_data[z[1]]
     else:
-        lo_rest=np.delete(arr,z[0], axis = 0)
+        lo_rest=np.delete(arr,z[0], axis=0)
+        lo_rest_prop=np.delete(prop_data,z[0])
+        removed_seg = arr[z[0]]
+        removed_prop = prop_data[z[0]]
 
-    lo_path, lo_rest = sort_segments(arr, sp, close_loop=True)
-
-    return lo_path, lo_rest
+    # print('input arr',arr, arr.shape[0])
+    # print('sp',sp)
+    sol, rest, sol_prop, rest_prop = sort_segments(lo_rest, sp, prop_data = lo_rest_prop)
+    if close_loop:
+        sol = np.vstack((sol, np.array([removed_seg])))
+        print(sol_prop, np.array([removed_prop]))
+        sol_prop = np.hstack((sol_prop, np.array([removed_prop])))
+    return sol, rest, sol_prop, rest_prop
 
 #DXF2KNOTS functions potentialy to remove
 def sort2match(arr, p):
