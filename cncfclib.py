@@ -1079,6 +1079,7 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     prop_list=[]
     elements_list = []
     prop_dict={}
+
     for p, layer in enumerate(layer_name):
 
         prop_dict = {p:{'feed':0,
@@ -1166,12 +1167,32 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     start_coord_arr = np.array(start_coord)
     return (element_arr, prop_arr, prop_dict, start_coord_arr)
 
+def extract_dxf_path(dxf, layer_list, dxf_params):
+    dec_acc, n_arc, l_arc = dxf_params
+    struct_data, prop_data, prop_dict, start_coord_arr = dxf_read_1(dxf, layer_list, dec_acc, n_arc, l_arc)
+    io_path, io_rest, io_path_prop, io_rest_prop = find_io_path(struct_data, prop_data, start_coord_arr)
+    pt0 = io_path[-1,-1]
+    lo_path, lo_rest, lo_path_prop, lo_rest_prop = find_lo_path(io_rest, io_rest_prop, pt0, return_idx=True)
+    return io_path, lo_path, io_path_prop, lo_path_prop
+
 def find_nearest(arr, pt0):
 
     tree = spatial.cKDTree(arr)
     d, i = tree.query(pt0, k=[1])
 
     return d, i
+
+def plot_path(path_list, prop_list):
+    color_list = ['red', 'green', 'blue', 'yellow']
+    ax = plt.subplot(1,1,1)
+    for j in np.arange(len(path_list)):
+        # print(path)
+        for i in np.arange(path_list[j].shape[0]):
+            # print(color_list[prop_list[j][i]])
+            ax.plot(path_list[j][i][:,0],path_list[j][i][:,1], color=color_list[prop_list[j][i]])
+    #
+    plt.grid(True)
+    plt.show()
 
 def find_segments(arr, member_pt):
     idx = np.where((arr[:,0,:] == member_pt) | (arr[:,1,:] == member_pt))[0]

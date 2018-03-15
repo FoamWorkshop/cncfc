@@ -98,7 +98,7 @@ import pickle
 import cncfclib
 import os
 import re
-
+import matplotlib.pyplot as plt
 
 def ct_len_1(sect_arr):
     u = sect_arr[:,0,:]
@@ -151,41 +151,50 @@ def main(args):
             z1 = [layer for layer in dxf_layers for m in [regex1.search(layer)] if m]
             z2 = [layer for layer in dxf_layers for m in [regex2.search(layer)] if m]
 
-            # print(z0, z1, z2)
+            dxf_params = (dec_acc, n_arc, l_arc)
             if z0:
                 print('single layer')
-                struct_data_list = []
-                struct_data, prop_data, prop_dict, start_coord_arr = cncfclib.dxf_read_1(dxf, z0, dec_acc, n_arc, l_arc)
-                io_path, io_rest, io_path_prop, io_rest_prop = cncfclib.find_io_path(struct_data, prop_data, start_coord_arr)
-                pt0 = io_path[-1,-1]
-                lo_path, lo_rest, lo_path_prop, lo_rest_prop = cncfclib.find_lo_path(io_rest, io_rest_prop, pt0, return_idx=True)
+                io_path, lo_path, io_path_prop, lo_path_prop = cncfclib.extract_dxf_path(dxf,z0,dxf_params)
+                cncfclib.plot_path([io_path, lo_path], [io_path_prop, lo_path_prop])
+
 
             if z1:
                 print('merge layers: ', z1)
-                struct_data_list = []
-                struct_data, prop_data, prop_dict, start_coord_arr = cncfclib.dxf_read_1(dxf, z1, dec_acc, n_arc, l_arc)
-                io_path, io_rest, io_path_prop, io_rest_prop = cncfclib.find_io_path(struct_data, prop_data, start_coord_arr)
-                pt0 = io_path[-1,-1]
-                lo_path, lo_rest, lo_path_prop, lo_rest_prop = cncfclib.find_lo_path(io_rest, io_rest_prop, pt0, return_idx=True)
+                # struct_data_list = []
+                # struct_data, prop_data, prop_dict, start_coord_arr = cncfclib.dxf_read_1(dxf, z1, dec_acc, n_arc, l_arc)
+                # io_path, io_rest, io_path_prop, io_rest_prop = cncfclib.find_io_path(struct_data, prop_data, start_coord_arr)
+                # pt0 = io_path[-1,-1]
+                # lo_path, lo_rest, lo_path_prop, lo_rest_prop = cncfclib.find_lo_path(io_rest, io_rest_prop, pt0, return_idx=True)
 
-                # for i, var in enumerate(lo_path):
-                #     print(i, var)
-                #
-                # for i, var in enumerate(lo_path_prop):
-                #     print(i, var)
-                #
-                # for i, var in enumerate(lo_rest):
-                #     print(i, var)
-                #
-                # for i, var in enumerate(lo_rest_prop):
-                #     print(i, var)
-
-                # print(lo_path)
-
-                # data_arr = np.vstack(struct_data_list)
+                io_path, lo_path, io_path_prop, lo_path_prop = cncfclib.extract_dxf_path(dxf,z1,dxf_params)
+                cncfclib.plot_path([io_path, lo_path], [io_path_prop, lo_path_prop])
+                # ax = plt.subplot(1,1,1)
+                # for var in np.vstack((io_path,lo_path)):
+                #     # print(var[:,0])
+                #     plt.plot(var[:,0],var[:,1])
+                # plt.grid(True)
+                # plt.show()
 
             if z2:
-                print('lofted cut!')
+                print('lofted cut: ', z2)
+                # struct_data_list = []
+                # struct_data1, prop_data1, prop_dict1, start_coord_arr1 = cncfclib.dxf_read_1(dxf, z2[0], dec_acc, n_arc, l_arc)
+                # io_path1, io_rest1, io_path_prop1, io_rest_prop1 = cncfclib.find_io_path(struct_data1, prop_data1, start_coord_arr1)
+                # pt01 = io_path1[-1,-1]
+                # lo_path1, lo_rest1, lo_path_prop1, lo_rest_prop1 = cncfclib.find_lo_path(io_rest1, io_rest_prop1, pt01)
+                #
+                # struct_data2, prop_data2, prop_dict2, start_coord_arr2 = cncfclib.dxf_read_1(dxf, z2[1], dec_acc, n_arc, l_arc)
+
+
+
+
+                # ax = plt.subplot(1,1,1)
+                # for var in np.vstack((io_path,lo_path)):
+                #     # print(var[:,0])
+                #     plt.plot(var[:,0],var[:,1])
+                # plt.grid(True)
+                # plt.show()
+
 
             # for layer_name in sorted(layer_name_list):
 #             for layer_name in sorted(z1):
