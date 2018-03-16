@@ -1065,6 +1065,8 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     arc_count = 0
     circle_count = 0
     path_offset =[0,0,0]
+    cut_dir_marker=np.array([])
+    cut_dir = 'ccw'
     struct_data_list=[]
     dxf_data = np.dtype([('segm', np.float, [2,3]),('props', np.int)])
                          # ('offset', np.float, 3),
@@ -1098,6 +1100,7 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
                 d_power = re.findall('(power) *= *([.0-9]+)', shape.raw_text)
                 d_angle = re.findall('(angle) *= *([-.0-9]+)', shape.raw_text)
                 d_radius =re.findall('(radius) *= *([-.0-9]+)', shape.raw_text)
+                d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*', shape.raw_text)
 
                 if d_feed:
                     prop_dict[p]['feed'] = np.float(d_feed[0][1])
@@ -1111,13 +1114,23 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
                 if d_radius:
                     prop_dict[p]['radius']= np.array([0,0,np.float(d_radius[0][1])])
 
+
                 if shape.raw_text == 'coord_0':
                     path_offset = [x for x in shape.insert]
                     print('path_offset')
                     print(path_offset)
                     prop_dict[p]['ref_coord']=path_offset
 
+                if d_cut_dir:
+                    # print('!!!!!!!!!!!!!!!!!!!!!!!!1cut_dir')
+                    # print(d_cut_dir)
+                    cut_dir = d_cut_dir[0]
 
+                if shape.raw_text == 'o':
+                    path_offset = [x for x in shape.insert]
+                    print('loop cut dir marker')
+                    print(path_offset)
+                    cut_dir_marker=path_offset
 
                 if shape.raw_text == 'start':
                     start_coord = tuple(round(x, tol) for x in shape.insert)
@@ -1183,14 +1196,15 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     element_arr=np.array(elements_list)
     prop_arr=np.array(prop_list)
     start_coord_arr = np.array(start_coord)
-    return (element_arr, prop_arr, prop_dict, start_coord_arr)
+    return (element_arr, prop_arr, prop_dict, (start_coord_arr, cut_dir_marker, cut_dir))
 
 def extract_dxf_path(dxf, layer_list, dxf_params):
     dec_acc, n_arc, l_arc = dxf_params
-    struct_data, prop_data, prop_dict, start_coord_arr = dxf_read_1(dxf, layer_list, dec_acc, n_arc, l_arc)
+    struct_data, prop_data, prop_dict, glob_params = dxf_read_1(dxf, layer_list, dec_acc, n_arc, l_arc)
+    start_coord_arr, cut_dir_marker, cut_dir = glob_params
     io_path, io_rest, io_path_prop, io_rest_prop = find_io_path(struct_data, prop_data, start_coord_arr)
     pt0 = io_path[-1,-1]
-    lo_path, lo_rest, lo_path_prop, lo_rest_prop = find_lo_path(io_rest, io_rest_prop, pt0, return_idx=True)
+    lo_path, lo_rest, lo_path_prop, lo_rest_prop = find_lo_path(io_rest, io_rest_prop, pt0, cut_dir = cut_dir, cut_dir_marker = cut_dir_marker)
     return io_path, lo_path, io_path_prop, lo_path_prop, prop_dict
 
 def find_nearest(arr, pt0):
@@ -1239,16 +1253,27 @@ def plot_path(path_list, prop_list, pd_list):
         plt.grid(True)
         plt.show()
 
-    if len(prop_arr.shape) == 2:
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-        for k in np.arange(2):
-            for j in np.arange(len(path_list[k])):
-                for i in np.arange(len(path_list[k][j])):
-                    p1 = path_list[k][j][i][0]
-                    p2 = path_list[k][j][i][1]
-                    prop_n = prop_list[k][j][i]
-                    pd = pd_list[k][prop_n]
+def plot_path1(ss):
+    color_list = ['red', 'green', 'blue', 'yellow']
+    # print(path_list)
+    # ax = plt.subplot(1,1,1)
+    fig = plt.figure()
+    ax = fig.gca(projection='3d')
+
+    for seq in ss:
+        for pp in seq:
+            # print('TTTTTTTTTTTTTTt')
+            # print(pp)
+            # for plane_pp in pp:
+            io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = pp
+
+            for path, prop in [(io_path1, io_path_prop1), (lo_path1, lo_path_prop1)]:
+                for i in np.arange(path.shape[0]):
+                    p1 = path[i][0]
+                    p2 = path[i][1]
+                    prop_n = prop[i]
+
+                    pd = prop_dict1[prop_n]
                     c = color_list[prop_n]
 
                     p1t = transform_pt(p1,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
@@ -1256,10 +1281,18 @@ def plot_path(path_list, prop_list, pd_list):
                     px = np.hstack((p1t[0], p2t[0]))
                     py = np.hstack((p1t[1], p2t[1]))
                     pz = np.hstack((p1t[2], p2t[2]))
-                    ax.plot(px, py, pz, color=c)
+                    # ax.plot(px, py, pz, color=c)
+                    ax.quiver(p1t[0], p1t[1], p1t[2],
+                              p2t[0]-p1t[0], p2t[1]-p1t[1], p2t[2]-p1t[2], color=c, arrow_length_ratio=0.1)
+    plt.grid(True)
+    plt.show()
         #
-        plt.grid(True)
-        plt.show()
+    #     plt.grid(True)
+    #     plt.show()
+    #
+    # if len(prop_arr.shape) == 2:
+    #     fig = plt.figure()
+    #     ax = fig.gca(projection='3d')
 
 def find_segments(arr, member_pt):
     idx = np.where((arr[:,0,:] == member_pt) | (arr[:,1,:] == member_pt))[0]
@@ -1400,7 +1433,8 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False):
     # print(prop_data)
     return sort_segments(arr, IO_knot[0], stop_pt=stop_knot[0], prop_data = prop_data, return_idx=return_idx)
 
-def find_lo_path(arr, prop_data, start_pt, return_idx=False, close_loop = True):
+def find_lo_path(arr, prop_data, start_pt, return_idx=False, close_loop = True, cut_dir = 'ccw', cut_dir_marker = np.array([])):
+    dir_dict={'ccw':1, 'cw':-1}
     # print(arr)
     # print(start_pt)
     z = find3dpoint(arr, start_pt)
@@ -1412,27 +1446,48 @@ def find_lo_path(arr, prop_data, start_pt, return_idx=False, close_loop = True):
     s1_path, s1_rest = sort_segments(s1, sp)
     s2_path, s2_rest = sort_segments(s2, sp)
 
-    u=np.diff(s1_path[0], axis=0)[0]
-    v=np.diff(s2_path[0], axis=0)[0]
-    loop_dir = np.cross(u,v)[2]
 
-    if loop_dir>=0:
-        lo_rest=np.delete(arr,z[1], axis=0)
-        lo_rest_prop=np.delete(prop_data,z[1])
-        removed_seg = arr[z[1]]
-        removed_prop = prop_data[z[1]]
+
+
+    if cut_dir_marker.size:
+        if np.linalg.norm(cut_dir_marker-s1_path[-1])<=np.linalg.norm(cut_dir_marker-s2_path[-1]):
+            lo_rest=np.delete(arr,z[1], axis=0)
+            lo_rest_prop=np.delete(prop_data,z[1])
+            removed_seg = arr[z[1]]
+            removed_prop = prop_data[z[1]]
+        else:
+            lo_rest=np.delete(arr,z[0], axis=0)
+            lo_rest_prop=np.delete(prop_data,z[0])
+            removed_seg = arr[z[0]]
+            removed_prop = prop_data[z[0]]
     else:
-        lo_rest=np.delete(arr,z[0], axis=0)
-        lo_rest_prop=np.delete(prop_data,z[0])
-        removed_seg = arr[z[0]]
-        removed_prop = prop_data[z[0]]
+        u=np.diff(s1_path[0], axis=0)[0]
+        v=np.diff(s2_path[0], axis=0)[0]
+        loop_dir = np.cross(u,v)[2]
+        # print(cut_dir)
+        if dir_dict[cut_dir]*loop_dir>=0:
+            lo_rest=np.delete(arr,z[1], axis=0)
+            lo_rest_prop=np.delete(prop_data,z[1])
+            removed_seg = arr[z[1]]
+            removed_prop = prop_data[z[1]]
+        else:
+            lo_rest=np.delete(arr,z[0], axis=0)
+            lo_rest_prop=np.delete(prop_data,z[0])
+            removed_seg = arr[z[0]]
+            removed_prop = prop_data[z[0]]
 
     # print('input arr',arr, arr.shape[0])
     # print('sp',sp)
     sol, rest, sol_prop, rest_prop = sort_segments(lo_rest, sp, prop_data = lo_rest_prop)
     if close_loop:
-        sol = np.vstack((sol, np.array([removed_seg])))
-        print(sol_prop, np.array([removed_prop]))
+        # print('TTTTTTTTTTTTt')
+        # print(sol[-1][1])
+        # print(removed_seg)
+
+        removed_seg_sorted, dummy = sort_segments(np.array([removed_seg]), sol[-1][1])
+        # print(removed_seg_sorted)
+        sol = np.vstack((sol, removed_seg_sorted))
+        # print(sol_prop, np.array([removed_prop]))
         sol_prop = np.hstack((sol_prop, np.array([removed_prop])))
     return sol, rest, sol_prop, rest_prop
 
