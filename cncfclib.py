@@ -6,7 +6,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from collections import Iterable
+from scipy.linalg import expm, norm
 from scipy import spatial
+
 import re
 # def flatten(items):
 #     """Yield items from any nested iterable; see REF."""
@@ -1082,24 +1084,40 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
 
     for p, layer in enumerate(layer_name):
 
-        prop_dict = {p:{'feed':0,
-                        'offset':np.array([0,0,0]),
+        prop_dict[p] =  {'feed':200,
+                        'ref_coord':np.zeros(3),
                         'power':0,
                         'angle':0,
-                        'radius':0,
-                        'source':layer_name}}
+                        'radius':np.zeros(3),
+                        'source':layer_name}
 
         for shape in dxf.entities:
             if shape.layer == layer and shape.dxftype == 'MTEXT':
-                prop_dict['feed']=np.array(re.findall('(feed) *= *([.0-9]+)', shape.raw_text)[0][1], dtype=np.float)
-                prop_dict['power']=np.array(re.findall('(power) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
-                prop_dict['angle']=np.array(re.findall('(angle) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
-                prop_dict['radius']=np.array(re.findall('(radius) *= *([.0-9]+)', shape.raw_text)[0][1],dtype=np.float)
+                # print(shape.raw_text)
+                d_feed =  re.findall('(feed) *= *([.0-9]+)', shape.raw_text)
+                d_power = re.findall('(power) *= *([.0-9]+)', shape.raw_text)
+                d_angle = re.findall('(angle) *= *([-.0-9]+)', shape.raw_text)
+                d_radius =re.findall('(radius) *= *([-.0-9]+)', shape.raw_text)
+
+                if d_feed:
+                    prop_dict[p]['feed'] = np.float(d_feed[0][1])
+
+                if d_power:
+                    prop_dict[p]['power'] = np.float(d_power[0][1])
+
+                if d_angle:
+                    prop_dict[p]['angle']=np.float(d_angle[0][1])
+
+                if d_radius:
+                    prop_dict[p]['radius']= np.array([0,0,np.float(d_radius[0][1])])
 
                 if shape.raw_text == 'coord_0':
-                    path_offset = array((round(x, tol) for x in shape.insert))
-                    prop_dict['offset']=path_offset
-                    # print('path offset: {}'.format(path_offset))
+                    path_offset = [x for x in shape.insert]
+                    print('path_offset')
+                    print(path_offset)
+                    prop_dict[p]['ref_coord']=path_offset
+
+
 
                 if shape.raw_text == 'start':
                     start_coord = tuple(round(x, tol) for x in shape.insert)
@@ -1173,7 +1191,7 @@ def extract_dxf_path(dxf, layer_list, dxf_params):
     io_path, io_rest, io_path_prop, io_rest_prop = find_io_path(struct_data, prop_data, start_coord_arr)
     pt0 = io_path[-1,-1]
     lo_path, lo_rest, lo_path_prop, lo_rest_prop = find_lo_path(io_rest, io_rest_prop, pt0, return_idx=True)
-    return io_path, lo_path, io_path_prop, lo_path_prop
+    return io_path, lo_path, io_path_prop, lo_path_prop, prop_dict
 
 def find_nearest(arr, pt0):
 
@@ -1181,18 +1199,67 @@ def find_nearest(arr, pt0):
     d, i = tree.query(pt0, k=[1])
 
     return d, i
+def transform_pt(p, ref_coord = np.zeros(3), r=np.zeros(3), angle=0):
+    # def M(axis, theta):
+    #     return expm(np.cross(np.eye(3), axis/norm(axis)*np.radians(angle)))
+    def M(axis, theta):
+        """
+        Return the rotation matrix associated with counterclockwise rotation about
+        the given axis by theta radians.
+        """
+        axis = np.asarray(axis)
+        axis = axis/np.sqrt(np.dot(axis, axis))
+        a = np.cos(theta/2.0)
+        b, c, d = -axis*np.sin(theta/2.0)
+        aa, bb, cc, dd = a*a, b*b, c*c, d*d
+        bc, ad, ac, ab, bd, cd = b*c, a*d, a*c, a*b, b*d, c*d
+        return np.array([[aa+bb-cc-dd, 2*(bc+ad), 2*(bd-ac)],
+                         [2*(bc-ad), aa+cc-bb-dd, 2*(cd+ab)],
+                         [2*(bd+ac), 2*(cd-ab), aa+dd-bb-cc]])
 
-def plot_path(path_list, prop_list):
+    axis = np.array([0,0.1,0])
+    M0 = M(axis, np.radians(angle))
+    p_abs = p+r-ref_coord
+    return np.dot(M0, p_abs) #+ np.dot(M0, r)
+    #+ref_coord
+
+def plot_path(path_list, prop_list, pd_list):
     color_list = ['red', 'green', 'blue', 'yellow']
-    ax = plt.subplot(1,1,1)
-    for j in np.arange(len(path_list)):
-        # print(path)
-        for i in np.arange(path_list[j].shape[0]):
-            # print(color_list[prop_list[j][i]])
-            ax.plot(path_list[j][i][:,0],path_list[j][i][:,1], color=color_list[prop_list[j][i]])
-    #
-    plt.grid(True)
-    plt.show()
+    # print(path_list)
+    path_arr = np.array(path_list)
+    prop_arr = np.array(prop_list)
+
+    if len(prop_arr.shape) == 1:
+        ax = plt.subplot(1,1,1)
+        for j in np.arange(len(path_list)):
+            for i in np.arange(len(path_list[j])):
+                # print(color_list[prop_list[j][i]])
+                ax.plot(path_list[j][i][:,0],path_list[j][i][:,1], color=color_list[prop_list[j][i]])
+        #
+        plt.grid(True)
+        plt.show()
+
+    if len(prop_arr.shape) == 2:
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        for k in np.arange(2):
+            for j in np.arange(len(path_list[k])):
+                for i in np.arange(len(path_list[k][j])):
+                    p1 = path_list[k][j][i][0]
+                    p2 = path_list[k][j][i][1]
+                    prop_n = prop_list[k][j][i]
+                    pd = pd_list[k][prop_n]
+                    c = color_list[prop_n]
+
+                    p1t = transform_pt(p1,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
+                    p2t = transform_pt(p2,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
+                    px = np.hstack((p1t[0], p2t[0]))
+                    py = np.hstack((p1t[1], p2t[1]))
+                    pz = np.hstack((p1t[2], p2t[2]))
+                    ax.plot(px, py, pz, color=c)
+        #
+        plt.grid(True)
+        plt.show()
 
 def find_segments(arr, member_pt):
     idx = np.where((arr[:,0,:] == member_pt) | (arr[:,1,:] == member_pt))[0]

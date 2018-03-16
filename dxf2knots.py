@@ -143,41 +143,42 @@ def main(args):
             dxf_layers = [var.name for var in dxf.layers]
             # print(dxf_layers)
 
-            regex0 = re.compile("^({})($|[(])".format(req_layer), re.IGNORECASE)
+            regex0 = re.compile("^({})(|[(])".format(req_layer), re.IGNORECASE)
             regex1 = re.compile("^({})[#].*".format(req_layer), re.IGNORECASE)
-            regex2 = re.compile("^({})[$].*".format(req_layer), re.IGNORECASE)
+            regex2 = re.compile("^({})%.*".format(req_layer), re.IGNORECASE)
 
             z0 = [layer for layer in dxf_layers for m in [regex0.search(layer)] if m]
             z1 = [layer for layer in dxf_layers for m in [regex1.search(layer)] if m]
             z2 = [layer for layer in dxf_layers for m in [regex2.search(layer)] if m]
 
             dxf_params = (dec_acc, n_arc, l_arc)
-            if z0:
-                print('single layer')
-                io_path, lo_path, io_path_prop, lo_path_prop = cncfclib.extract_dxf_path(dxf,z0,dxf_params)
-                cncfclib.plot_path([io_path, lo_path], [io_path_prop, lo_path_prop])
 
-
-            if z1:
-                print('merge layers: ', z1)
-                # struct_data_list = []
-                # struct_data, prop_data, prop_dict, start_coord_arr = cncfclib.dxf_read_1(dxf, z1, dec_acc, n_arc, l_arc)
-                # io_path, io_rest, io_path_prop, io_rest_prop = cncfclib.find_io_path(struct_data, prop_data, start_coord_arr)
-                # pt0 = io_path[-1,-1]
-                # lo_path, lo_rest, lo_path_prop, lo_rest_prop = cncfclib.find_lo_path(io_rest, io_rest_prop, pt0, return_idx=True)
-
-                io_path, lo_path, io_path_prop, lo_path_prop = cncfclib.extract_dxf_path(dxf,z1,dxf_params)
-                cncfclib.plot_path([io_path, lo_path], [io_path_prop, lo_path_prop])
-                # ax = plt.subplot(1,1,1)
-                # for var in np.vstack((io_path,lo_path)):
-                #     # print(var[:,0])
-                #     plt.plot(var[:,0],var[:,1])
-                # plt.grid(True)
-                # plt.show()
+            # if z0:
+            #     print('single layer')
+            #     io_path, lo_path, io_path_prop, lo_path_prop, prop_dict = cncfclib.extract_dxf_path(dxf,z0,dxf_params)
+            #     cncfclib.plot_path([io_path, lo_path], [io_path_prop, lo_path_prop], [prop_dict])
+            #
+            # if z1:
+            #     print('merge layers: ', z1)
+            #     io_path, lo_path, io_path_prop, lo_path_prop, prop_dict = cncfclib.extract_dxf_path(dxf,z1,dxf_params)
+            #     cncfclib.plot_path([io_path, lo_path], [io_path_prop, lo_path_prop],[prop_dict])
 
             if z2:
-                print('lofted cut: ', z2)
-                # struct_data_list = []
+                regex3 = re.compile("^.*%.*#", re.IGNORECASE)
+
+                z3 = sorted(list(set([m.group() for layer in z2 for m in [regex3.search(layer)] if m])))
+                print(z3)
+                regex31 = re.compile("^{}".format(z3[0]), re.IGNORECASE)
+                regex32 = re.compile("^{}".format(z3[1]), re.IGNORECASE)
+                z31 = [layer for layer in z2 for m in [regex31.search(layer)] if m]
+                z32 = [layer for layer in z2 for m in [regex32.search(layer)] if m]
+
+                io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(dxf, z31, dxf_params)
+                io_path2, lo_path2, io_path_prop2, lo_path_prop2, prop_dict2 = cncfclib.extract_dxf_path(dxf, z32, dxf_params)
+
+                cncfclib.plot_path([[io_path1, lo_path1],[io_path2, lo_path2]], [[io_path_prop1, lo_path_prop1], [io_path_prop2, lo_path_prop2]], [prop_dict1, prop_dict2])
+
+
                 # struct_data1, prop_data1, prop_dict1, start_coord_arr1 = cncfclib.dxf_read_1(dxf, z2[0], dec_acc, n_arc, l_arc)
                 # io_path1, io_rest1, io_path_prop1, io_rest_prop1 = cncfclib.find_io_path(struct_data1, prop_data1, start_coord_arr1)
                 # pt01 = io_path1[-1,-1]
