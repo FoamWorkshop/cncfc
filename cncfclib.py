@@ -1054,13 +1054,33 @@ def make_chains(section_list):
         prof=make_loop(p_arr)
     return chain_list
 
+def extract_params_from_string(s):
+    res_dict=collections.defaultdict(dict)
+
+    d_key =  re.findall('.*\[(\w+)\].*', s)
+    d_feed =  re.findall('feed *= *([.0-9]+)', s)
+    d_power = re.findall('power *= *([.0-9]+)', s)
+    d_angle = re.findall('angle *= *([-.0-9]+)', s)
+    d_radius =re.findall('radius *= *([-.0-9]+)', s)
+    d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*', s)
+    d_split =re.findall('split.*=.*([0-9]+).*', s)
+
+    if d_feed:    res_dict['feed']     = np.float(d_feed[0])
+    if d_power:   res_dict['power']    = np.float(d_power[0])
+    if d_angle:   res_dict['angle']    = np.float(d_angle[0])
+    if d_split:   res_dict['split']    = np.int(d_split[0])
+    if d_radius:  res_dict['radius']   = np.array([0,0,np.float(d_radius[0])])
+    if d_cut_dir: res_dict['cut_dir']  = d_cut_dir
+
+    return res_dict
+
 def extract_params(dxf, layer):
     glob_prop_dict=collections.defaultdict(dict)
+    forced_key=None
     for shape in dxf.entities:
         if layer in shape.layer and shape.dxftype == 'MTEXT':
-            porp_str = shape.raw_text
 
-            d_key =  re.findall('.*\[(\w+)\].*', porp_str)
+            porp_str = shape.raw_text
             # print('--------------------------,forced_key)
             d_feed =  re.findall('feed *= *([.0-9]+)', porp_str)
             d_power = re.findall('power *= *([.0-9]+)', porp_str)
@@ -1069,10 +1089,12 @@ def extract_params(dxf, layer):
             d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*', porp_str)
             d_split =re.findall('split.*=.*([0-9]+).*', porp_str)
             d_coord =re.findall('.*coord_0.*', porp_str)
-
-            glob_prop_dict['layer'] = layer
-
-
+            # local_params = extract_params_from_string(shape.raw_text)
+            #
+            # d_coord =re.findall('.*coord_0.*', shape.raw_text)
+            # if d_coord:   local_params.update({'ref_coord': [x for x in shape.insert]})
+            # local_params.update({'layer': layer})
+            d_key =  re.findall('.*\[(\w+)\].*', shape.raw_text)
             if d_feed:  glob_prop_dict['feed']     = np.float(d_feed[0])
             if d_power: glob_prop_dict['power']    = np.float(d_power[0])
             if d_angle: glob_prop_dict['angle']    = np.float(d_angle[0])
@@ -1083,8 +1105,6 @@ def extract_params(dxf, layer):
 
             if d_key:
                 forced_key = d_key[0]
-            else:
-                forced_key=None
 
     return glob_prop_dict, forced_key
 
@@ -1114,6 +1134,9 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     # global_params = extract_params(dxf, 'props')
     # print('global params')
     # print(global_params)
+    par, key = extract_params(dxf, 'glob_props')
+    for var in par.items():
+        print(var)
 
     for p, layer in enumerate(layer_name):
         local_params, forced_key = extract_params(dxf, layer)
@@ -1359,9 +1382,9 @@ def plot_path1(ss):
 
 def find_segments(arr, member_pt):
     idx = np.where((arr[:,0,:] == member_pt) | (arr[:,1,:] == member_pt))[0]
-    print('member point',member_pt)
-    print(arr[:,0,:])
-    print(idx)
+    # print('member point',member_pt)
+    # print(arr[:,0,:])
+    # print(idx)
     return arr[idx,:,:]
 
 def sort_segments(arr, start_pt, stop_pt=np.array([]), close_loop = False, return_idx=False, prop_data=np.array([])):
@@ -1526,16 +1549,16 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
     else:
         IO_knot = unique_knots_1
 
-    print('IO knot: ',IO_knot)
+    # print('IO knot: ',IO_knot)
     # print('IO knot: ',IO_knot)
     # print(prop_data)
 
     sol, rest, sol_prop, rest_prop = sort_segments(arr, IO_knot[0], stop_pt=stop_knot[0], prop_data = prop_data)
     # print('prop dict',prop_dict)
     if prop_dict:
-        print('prop_dict')
-        print(prop_dict)
-        # print('lvl1')
+        # print('prop_dict')
+        # print(prop_dict)
+        # # print('lvl1')
         for p in set(sol_prop):
             if 'split' in prop_dict[p]:
                 sol_list = []
@@ -1632,7 +1655,7 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
 def find_lo_path(arr, prop_data, start_pt, return_idx=False, close_loop = True, cut_dir = 'ccw', cut_dir_marker = np.array([]), prop_dict={}):
     dir_dict={'ccw':1, 'cw':-1}
     # print(arr)
-    print(start_pt)
+    # print(start_pt)
 
     z = find3dpoint(arr, start_pt)
     # print('z:', z)
