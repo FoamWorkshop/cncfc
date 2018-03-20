@@ -1054,50 +1054,39 @@ def make_chains(section_list):
         prof=make_loop(p_arr)
     return chain_list
 
-def extract_params(dxf, layer, p_name=None):
+def extract_params(dxf, layer):
     glob_prop_dict=collections.defaultdict(dict)
     for shape in dxf.entities:
         if layer in shape.layer and shape.dxftype == 'MTEXT':
-            print('kasjaskdajsdl.akdas')
-            print(layer, p_name)
             porp_str = shape.raw_text
-            # for porp_str in shape.raw_text.split('['):
-            # # print()
-            #     if porp_str:
-            #         prop_group_name =  re.findall('(\w+)\]', porp_str)
-            #         if p_name is None:
-            #             key=prop_group_name[0]
-            #         else:
-            key=p_name
 
-            # glob_prop_dict[key] =  {'feed':200,
-            #                         'ref_coord':np.zeros(3),
-            #                         'power':0,
-            #                         'angle':0,
-            #                         'radius':np.zeros(3),
-            #                         'source':layer,
-            #                         'split':0}
-
+            d_key =  re.findall('.*\[(\w+)\].*', porp_str)
+            # print('--------------------------,forced_key)
             d_feed =  re.findall('feed *= *([.0-9]+)', porp_str)
             d_power = re.findall('power *= *([.0-9]+)', porp_str)
             d_angle = re.findall('angle *= *([-.0-9]+)', porp_str)
             d_radius =re.findall('radius *= *([-.0-9]+)', porp_str)
             d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*', porp_str)
             d_split =re.findall('split.*=.*([0-9]+).*', porp_str)
+            d_coord =re.findall('.*coord_0.*', porp_str)
 
-            if d_feed:  glob_prop_dict[key]['feed']     = np.float(d_feed[0])
-            if d_power: glob_prop_dict[key]['power']    = np.float(d_power[0])
-            if d_angle: glob_prop_dict[key]['angle']    = np.float(d_angle[0])
-            if d_split: glob_prop_dict[key]['split']    = np.int(d_split[0])
-            if d_radius:glob_prop_dict[key]['radius'   ]= np.array([0,0,np.float(d_radius[0])])
-            if d_cut_dir: glob_prop_dict[key]['cut_dir']= d_cut_dir
-            glob_prop_dict[key]['layer'] = layer
+            glob_prop_dict['layer'] = layer
 
-            if shape.raw_text == 'coord_0':
-                path_offset = [x for x in shape.insert]
-                glob_prop_dict[key]['ref_coord']=path_offset
 
-    return glob_prop_dict
+            if d_feed:  glob_prop_dict['feed']     = np.float(d_feed[0])
+            if d_power: glob_prop_dict['power']    = np.float(d_power[0])
+            if d_angle: glob_prop_dict['angle']    = np.float(d_angle[0])
+            if d_split: glob_prop_dict['split']    = np.int(d_split[0])
+            if d_radius:glob_prop_dict['radius'   ]= np.array([0,0,np.float(d_radius[0])])
+            if d_cut_dir: glob_prop_dict['cut_dir']= d_cut_dir
+            if d_coord: glob_prop_dict['ref_coord'] = [x for x in shape.insert]
+
+            if d_key:
+                forced_key = d_key[0]
+            else:
+                forced_key=None
+
+    return glob_prop_dict, forced_key
 
 def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     tol = dec_acc
@@ -1118,7 +1107,7 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     dxf_data = np.dtype([('segm', np.float, [2,3]),('props', np.int)])
     prop_list=[]
     elements_list = []
-    glob_prop_dict={}
+    glob_prop_dict= {}
     prop_dict = collections.defaultdict(dict)
 
 
@@ -1127,89 +1116,85 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     # print(global_params)
 
     for p, layer in enumerate(layer_name):
-        # print('dsadfasssssssssssssssssslayer')
-        # print(layer)
-        local_params = extract_params(dxf, layer, p_name = p)
+        local_params, forced_key = extract_params(dxf, layer)
+        prop_dict[p] = local_params
         # print('local params')
         # print(local_params)
         # print(p)
+        # for shape in dxf.entities:
 
-
-
-        for shape in dxf.entities:
-
-            if shape.layer == layer and shape.dxftype == 'MTEXT':
-                # print(shape.raw_text)
-                prop_str = shape.raw_text
-                # glob_set =  re.findall('.*\[(\w+)\].*', shape.raw_text)
-                #
-                # if p == glob_set:
-                #     prop_dict[p] = glob_prop_dict[glob_set]
-                # else:
-                #     prop_dict={p: {'feed':200,
-                #                     'ref_coord':np.zeros(3),
-                #                     'power':0,
-                #                     'angle':0,
-                #                     'radius':np.zeros(3),
-                #                     'source':layer_name,
-                #                     'split':0}}
-                #
-                # d_feed =  re.findall('feed *= *([.0-9]+)', porp_str)
-                # d_power = re.findall('power *= *([.0-9]+)', porp_str)
-                # d_angle = re.findall('angle *= *([-.0-9]+)', porp_str)
-                # d_radius =re.findall('.*radius.*=.*([-.0-9]+)', porp_str)
-                # d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*', prop_str)
-                # print(porp_str)
-                # d_split =re.findall('.*(split).*=.*([0-9]+).*', prop_str)
-                # print('UUUUUUUUUUUUUUUUUu', d_split)
-                # print(porp_str)
-                # print('dradius', d_radius)
-                # print('dradius', d_radius[0])
-                # if d_feed:  prop_dict[p]['feed']=  np.float(d_feed[0])
-                # if d_power: prop_dict[p]['power']= np.float(d_power[0])
-                # if d_angle: prop_dict[p]['angle']= np.float(d_angle[0])
-                # print('split',d_split)
-                # if d_split: prop_dict[p]['split']= np.int(d_split[0])
-                # if d_radius:prop_dict[p]['radius']= np.array([0,0,np.float(d_radius[0])])
-
-                # if d_feed:
-                #     prop_dict[p]['feed'] = np.float(d_feed[0][1])
-                #
-                # if d_power:
-                #     prop_dict[p]['power'] = np.float(d_power[0][1])
-                #
-                # if d_angle:
-                #     prop_dict[p]['angle']=np.float(d_angle[0][1])
-                #
-                # if d_split:
-                #     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%',np.int(d_split[0]))
-                #     prop_dict[p]['split']=np.int(d_split[0])
-                #
-                # if d_radius:
-                #     prop_dict[p]['radius']= np.array([0,0,np.float(d_radius[0][1])])
-
-
-
-                # if d_cut_dir:
-                #     # print('!!!!!!!!!!!!!!!!!!!!!!!!1cut_dir')
-                #     # print(d_cut_dir)
-                #     cut_dir = d_cut_dir[0]
-
-                # if d_split:
-                #     # print('!!!!!!!!!!!!!!!!!!!!!!!!1cut_dir')
-                #     # print(d_cut_dir)
-                #     # split = dc
-                #     split = d_split
-
-                if shape.raw_text == 'o':
-                    path_offset = [x for x in shape.insert]
-                    # print('loop cut dir marker')
-                    # print(path_offset)
-                    cut_dir_marker=path_offset
-
-                if shape.raw_text == 'start':
-                    start_coord = tuple(round(x, tol) for x in shape.insert)
-                    # print('start coord: {}'.format(start_coord))
+            # if shape.layer == layer and shape.dxftype == 'MTEXT':
+            #     # print(shape.raw_text)
+            #     prop_str = shape.raw_text
+            #     # glob_set =  re.findall('.*\[(\w+)\].*', shape.raw_text)
+            #     #
+            #     # if p == glob_set:
+            #     #     prop_dict[p] = glob_prop_dict[glob_set]
+            #     # else:
+            #     #     prop_dict={p: {'feed':200,
+            #     #                     'ref_coord':np.zeros(3),
+            #     #                     'power':0,
+            #     #                     'angle':0,
+            #     #                     'radius':np.zeros(3),
+            #     #                     'source':layer_name,
+            #     #                     'split':0}}
+            #     #
+            #     # d_feed =  re.findall('feed *= *([.0-9]+)', porp_str)
+            #     # d_power = re.findall('power *= *([.0-9]+)', porp_str)
+            #     # d_angle = re.findall('angle *= *([-.0-9]+)', porp_str)
+            #     # d_radius =re.findall('.*radius.*=.*([-.0-9]+)', porp_str)
+            #     # d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*', prop_str)
+            #     # print(porp_str)
+            #     # d_split =re.findall('.*(split).*=.*([0-9]+).*', prop_str)
+            #     # print('UUUUUUUUUUUUUUUUUu', d_split)
+            #     # print(porp_str)
+            #     # print('dradius', d_radius)
+            #     # print('dradius', d_radius[0])
+            #     # if d_feed:  prop_dict[p]['feed']=  np.float(d_feed[0])
+            #     # if d_power: prop_dict[p]['power']= np.float(d_power[0])
+            #     # if d_angle: prop_dict[p]['angle']= np.float(d_angle[0])
+            #     # print('split',d_split)
+            #     # if d_split: prop_dict[p]['split']= np.int(d_split[0])
+            #     # if d_radius:prop_dict[p]['radius']= np.array([0,0,np.float(d_radius[0])])
+            #
+            #     # if d_feed:
+            #     #     prop_dict[p]['feed'] = np.float(d_feed[0][1])
+            #     #
+            #     # if d_power:
+            #     #     prop_dict[p]['power'] = np.float(d_power[0][1])
+            #     #
+            #     # if d_angle:
+            #     #     prop_dict[p]['angle']=np.float(d_angle[0][1])
+            #     #
+            #     # if d_split:
+            #     #     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%',np.int(d_split[0]))
+            #     #     prop_dict[p]['split']=np.int(d_split[0])
+            #     #
+            #     # if d_radius:
+            #     #     prop_dict[p]['radius']= np.array([0,0,np.float(d_radius[0][1])])
+            #
+            #
+            #
+            #     # if d_cut_dir:
+            #     #     # print('!!!!!!!!!!!!!!!!!!!!!!!!1cut_dir')
+            #     #     # print(d_cut_dir)
+            #     #     cut_dir = d_cut_dir[0]
+            #
+            #     # if d_split:
+            #     #     # print('!!!!!!!!!!!!!!!!!!!!!!!!1cut_dir')
+            #     #     # print(d_cut_dir)
+            #     #     # split = dc
+            #     #     split = d_split
+            #
+            #     if shape.raw_text == 'o':
+            #         path_offset = [x for x in shape.insert]
+            #         # print('loop cut dir marker')
+            #         # print(path_offset)
+            #         cut_dir_marker=path_offset
+            #
+            #     if shape.raw_text == 'start':
+            #         start_coord = tuple(round(x, tol) for x in shape.insert)
+            #         # print('start coord: {}'.format(start_coord))
 
 
 
@@ -1272,9 +1257,9 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     element_arr=np.array(elements_list)
     prop_arr=np.array(prop_list)
     start_coord_arr = np.array(start_coord)
-    print('local_params')
+    # print('local_params')
     # print(local_params)
-    return (element_arr, prop_arr, local_params, (start_coord_arr, cut_dir_marker, cut_dir, split))
+    return (element_arr, prop_arr, prop_dict, (start_coord_arr, cut_dir_marker, cut_dir, split))
 
 def extract_dxf_path(dxf, layer_list, dxf_params):
     dec_acc, n_arc, l_arc = dxf_params
@@ -1355,12 +1340,12 @@ def plot_path1(ss):
                     p1 = path[i][0]
                     p2 = path[i][1]
                     prop_n = prop[i]
-                    print('88888888888888888888888888888888888')
-                    print(prop_dict1)
-                    print(prop_dict1['layer'])
+                    # print('88888888888888888888888888888888888')
+                    # print(prop_dict1)
+                    # print(prop_dict1['layer'])
                     pd = prop_dict1[prop_n]
                     c = color_list[prop_n]
-                    print(pd, prop_n)
+                    # print(pd, prop_n)
                     p1t = transform_pt(p1,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
                     p2t = transform_pt(p2,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
                     px = np.hstack((p1t[0], p2t[0]))
@@ -1547,97 +1532,97 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
 
     sol, rest, sol_prop, rest_prop = sort_segments(arr, IO_knot[0], stop_pt=stop_knot[0], prop_data = prop_data)
     # print('prop dict',prop_dict)
-    # if prop_dict:
-    #     print('prop_dict')
-    #     print(prop_dict)
-    #     # print('lvl1')
-    #     for p in set(sol_prop):
-    #         if 'split' in prop_dict[p]:
-    #             sol_list = []
-    #             prop_list = []
-    #             splits = prop_dict[p]['split']
-    #             p_idxs = np.where(sol_prop == p)[0]
-    #             q_idxs = np.where(sol_prop != p)[0]
-    #             # print('ZZZZZZZZZZZZZZZZZz', p_idxs)
-    #             continous_ranges_list = []
-    #             ranges_to_split_list = []
-    #             ranges_to_save_list = []
-    #
-    #             for k, g in groupby(enumerate(p_idxs.tolist()), lambda ix: ix[0]-ix[1]):
-    #                 ranges_to_split = list(map(itemgetter(1), g))
-    #                 ranges_to_split_list.append(ranges_to_split)
-    #
-    #             for k, b in groupby(enumerate(q_idxs.tolist()), lambda ix: ix[0]-ix[1]):
-    #                 ranges_to_save = list(map(itemgetter(1), b))
-    #                 ranges_to_save_list.append(ranges_to_save)
-    #
-    #             # print(ranges_to_split_list)
-    #             # print(ranges_to_save_list)
-    #
-    #             A = ranges_to_split_list
-    #             B = ranges_to_save_list
-    #
-    #             if not B:
-    #                 # print('no ranges to save')
-    #                 for split_group in A:
-    #                     split_buff, split_prop_buf = make_split(sol[split_group], sol_prop[split_group], splits)
-    #                 sol_list.append(split_buff)
-    #                 prop_list.append(split_prop_buf)
-    #             else:
-    #
-    #                 if len(A)==len(B):
-    #
-    #                     for split_group, save_group in zip(A, B):
-    #                         split_buff, split_prop_buf = make_split(sol[split_group], sol_prop[split_group], splits)
-    #                         if A[0][0]<B[0][0]:
-    #                             sol_list.append(split_buff)
-    #                             sol_list.append(sol[save_group])
-    #                             prop_list.append(split_prop_buf)
-    #                             prop_list.append(sol_prop[save_group])
-    #                         else:
-    #                             sol_list.append(sol[save_group])
-    #                             sol_list.append(split_buff)
-    #                             prop_list.append(sol_prop[save_group])
-    #                             prop_list.append(split_prop_buf)
-    #
-    #                 else:
-    #                     if len(A)>len(B):
-    #                         for split_group, save_group in zip(A[:-1],B):
-    #                             split_buff, split_prop_buf = make_split(sol[split_group], sol_prop[split_group], splits)
-    #                             sol_list.append(split_buff)
-    #                             sol_list.append(sol[save_group])
-    #                             prop_list.append(split_prop_buf)
-    #                             prop_list.append(sol_prop[save_group])
-    #                         split_buff, split_prop_buf = make_split(sol[A[-1]], sol_prop[A[-1]], splits)
-    #                         sol_list.append(split_buff)
-    #                         prop_list.append(split_prop_buf)
-    #
-    #                     else:
-    #                         for split_group, save_group in zip(A,B[:-1]):
-    #                             split_buff, split_prop_buf = make_split(sol[split_group], sol_prop[split_group], splits)
-    #                             sol_list.append(sol[save_group])
-    #                             sol_list.append(split_buff)
-    #                             prop_list.append(sol_prop[save_group])
-    #                             prop_list.append(split_prop_buf)
-    #                         sol_list.append(sol[B[-1]])
-    #                         prop_list.append(sol_prop[B[-1]])
-    #
-    #
-    #             # print(sol_list)
-    #             sol = np.concatenate(sol_list, axis=0)
-    #             # print(sol)
-    #             sol_prop = np.hstack(prop_list)
-    #             # print(sol_prop)
-    #
-    #                         # ranges_to_save_list[-1]
-    #
-    #                     #start with split
-    #
-    #                     #start with save
-    #             # make_split(sol[ranges])
-    #             # print(continous_ranges_list)
-    #
-    # # print('finale sol', sol)
+    if prop_dict:
+        print('prop_dict')
+        print(prop_dict)
+        # print('lvl1')
+        for p in set(sol_prop):
+            if 'split' in prop_dict[p]:
+                sol_list = []
+                prop_list = []
+                splits = prop_dict[p]['split']
+                p_idxs = np.where(sol_prop == p)[0]
+                q_idxs = np.where(sol_prop != p)[0]
+                # print('ZZZZZZZZZZZZZZZZZz', p_idxs)
+                continous_ranges_list = []
+                ranges_to_split_list = []
+                ranges_to_save_list = []
+
+                for k, g in groupby(enumerate(p_idxs.tolist()), lambda ix: ix[0]-ix[1]):
+                    ranges_to_split = list(map(itemgetter(1), g))
+                    ranges_to_split_list.append(ranges_to_split)
+
+                for k, b in groupby(enumerate(q_idxs.tolist()), lambda ix: ix[0]-ix[1]):
+                    ranges_to_save = list(map(itemgetter(1), b))
+                    ranges_to_save_list.append(ranges_to_save)
+
+                # print(ranges_to_split_list)
+                # print(ranges_to_save_list)
+
+                A = ranges_to_split_list
+                B = ranges_to_save_list
+
+                if not B:
+                    # print('no ranges to save')
+                    for split_group in A:
+                        split_buff, split_prop_buf = make_split(sol[split_group], sol_prop[split_group], splits)
+                    sol_list.append(split_buff)
+                    prop_list.append(split_prop_buf)
+                else:
+
+                    if len(A)==len(B):
+
+                        for split_group, save_group in zip(A, B):
+                            split_buff, split_prop_buf = make_split(sol[split_group], sol_prop[split_group], splits)
+                            if A[0][0]<B[0][0]:
+                                sol_list.append(split_buff)
+                                sol_list.append(sol[save_group])
+                                prop_list.append(split_prop_buf)
+                                prop_list.append(sol_prop[save_group])
+                            else:
+                                sol_list.append(sol[save_group])
+                                sol_list.append(split_buff)
+                                prop_list.append(sol_prop[save_group])
+                                prop_list.append(split_prop_buf)
+
+                    else:
+                        if len(A)>len(B):
+                            for split_group, save_group in zip(A[:-1],B):
+                                split_buff, split_prop_buf = make_split(sol[split_group], sol_prop[split_group], splits)
+                                sol_list.append(split_buff)
+                                sol_list.append(sol[save_group])
+                                prop_list.append(split_prop_buf)
+                                prop_list.append(sol_prop[save_group])
+                            split_buff, split_prop_buf = make_split(sol[A[-1]], sol_prop[A[-1]], splits)
+                            sol_list.append(split_buff)
+                            prop_list.append(split_prop_buf)
+
+                        else:
+                            for split_group, save_group in zip(A,B[:-1]):
+                                split_buff, split_prop_buf = make_split(sol[split_group], sol_prop[split_group], splits)
+                                sol_list.append(sol[save_group])
+                                sol_list.append(split_buff)
+                                prop_list.append(sol_prop[save_group])
+                                prop_list.append(split_prop_buf)
+                            sol_list.append(sol[B[-1]])
+                            prop_list.append(sol_prop[B[-1]])
+
+
+                # print(sol_list)
+                sol = np.concatenate(sol_list, axis=0)
+                # print(sol)
+                sol_prop = np.hstack(prop_list)
+                # print(sol_prop)
+
+                            # ranges_to_save_list[-1]
+
+                        #start with split
+
+                        #start with save
+                # make_split(sol[ranges])
+                # print(continous_ranges_list)
+
+    # print('finale sol', sol)
     return sol, rest, sol_prop, rest_prop
 
 
