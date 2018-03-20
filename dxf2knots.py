@@ -141,27 +141,9 @@ def main(args):
             case_name = os.path.splitext(files_dxf_member)
             dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
             dxf_layers = [var.name for var in dxf.layers]
-            # print(dxf_layers)
-
-            regex0 = re.compile("^({})(|[(])".format(req_layer), re.IGNORECASE)
-            regex1 = re.compile("^({})[#].*".format(req_layer), re.IGNORECASE)
             regex2 = re.compile("^({})#.*".format(req_layer), re.IGNORECASE)
-
-            z0 = [layer for layer in dxf_layers for m in [regex0.search(layer)] if m]
-            z1 = [layer for layer in dxf_layers for m in [regex1.search(layer)] if m]
             z2 = [layer for layer in dxf_layers for m in [regex2.search(layer)] if m]
-
             dxf_params = (dec_acc, n_arc, l_arc)
-
-            # if z0:
-            #     print('single layer')
-            #     io_path, lo_path, io_path_prop, lo_path_prop, prop_dict = cncfclib.extract_dxf_path(dxf,z0,dxf_params)
-            #     cncfclib.plot_path([io_path, lo_path], [io_path_prop, lo_path_prop], [prop_dict])
-            #
-            # if z1:
-            #     print('merge layers: ', z1)
-            #     io_path, lo_path, io_path_prop, lo_path_prop, prop_dict = cncfclib.extract_dxf_path(dxf,z1,dxf_params)
-            #     cncfclib.plot_path([io_path, lo_path], [io_path_prop, lo_path_prop],[prop_dict])
 
             if z2:
                 print(z2)
@@ -173,15 +155,11 @@ def main(args):
                 for seq_step in z3:
                     regex4 = re.compile("{}#[0-1]".format(seq_step), re.IGNORECASE)
                     z5 = sorted(list(set([m.group() for layer in z2 for m in [regex4.search(layer)] if m])))
-                    # print('sequence step: ',seq_step)
-                    # _list=[]
                     plane_sections_list = []
                     for z6 in z5:
-                        # print('plane: ',z6)
                         regex5 = re.compile("{}#.*".format(z6), re.IGNORECASE)
                         z7 = sorted(list(set([m.group() for layer in z2 for m in [regex5.search(layer)] if m])))
                         plane_sections_list.append(z7)
-                        # print('sections: ',z7)
                     seq_list.append(plane_sections_list)
                 ss=[]
                 for i, seq in enumerate(seq_list):
@@ -203,43 +181,8 @@ def main(args):
                     else:
                         ss.append(pp)
 
-                # cncfclib.plot_path([[io_path1, lo_path1],[io_path2, lo_path2]], [[io_path_prop1, lo_path_prop1], [io_path_prop2, lo_path_prop2]], [prop_dict1, prop_dict2])
                 cncfclib.plot_path1(ss)
 
-
-                    # elif len(seq) == 2:
-                    #     io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(dxf, plane[0], dxf_params)
-                    #     io_path2, lo_path2, io_path_prop2, lo_path_prop2, prop_dict2 = cncfclib.extract_dxf_path(dxf, z32, dxf_params)
-                    #     pp0.append(io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1)
-                    #     pp1.append(io_path2, lo_path2, io_path_prop2, lo_path_prop2, prop_dict2)
-
-
-
-                # struct_data1, prop_data1, prop_dict1, start_coord_arr1 = cncfclib.dxf_read_1(dxf, z2[0], dec_acc, n_arc, l_arc)
-                # io_path1, io_rest1, io_path_prop1, io_rest_prop1 = cncfclib.find_io_path(struct_data1, prop_data1, start_coord_arr1)
-                # pt01 = io_path1[-1,-1]
-                # lo_path1, lo_rest1, lo_path_prop1, lo_rest_prop1 = cncfclib.find_lo_path(io_rest1, io_rest_prop1, pt01)
-                #
-                # struct_data2, prop_data2, prop_dict2, start_coord_arr2 = cncfclib.dxf_read_1(dxf, z2[1], dec_acc, n_arc, l_arc)
-
-
-
-
-                # ax = plt.subplot(1,1,1)
-                # for var in np.vstack((io_path,lo_path)):
-                #     # print(var[:,0])
-                #     plt.plot(var[:,0],var[:,1])
-                # plt.grid(True)
-                # plt.show()
-
-
-            # for layer_name in sorted(layer_name_list):
-#             for layer_name in sorted(z1):
-#                 knots_list, elements_arr, segment_bounds, shape_count, start_coord, struct_data = cncfclib.dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc)
-#
-#                 print('dxf loaded')
-# #                 io_path, io_rest = cncfclib.find_io_path(elements_arr, start_coord)
-#                 lo_path, lo_rest = cncfclib.find_lo_path(io_rest, io_path[-1,-1,:])
 #
 # #EQUIVALENCE SECTION
 # #                 section_list = io_knots_coord
