@@ -1054,25 +1054,33 @@ def make_chains(section_list):
         prof=make_loop(p_arr)
     return chain_list
 
-def extract_params_from_string(s):
-    res_dict=collections.defaultdict(dict)
+def extract_global_params(dxf, layer):
+    global_dict=collections.defaultdict(dict)
+    for shape in dxf.entities:
+        if layer in shape.layer and shape.dxftype == 'MTEXT':
+            for block in shape.raw_text.split('[')[1:]:
 
-    d_key =  re.findall('.*\[(\w+)\].*', s)
-    d_feed =  re.findall('feed *= *([.0-9]+)', s)
-    d_power = re.findall('power *= *([.0-9]+)', s)
-    d_angle = re.findall('angle *= *([-.0-9]+)', s)
-    d_radius =re.findall('radius *= *([-.0-9]+)', s)
-    d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*', s)
-    d_split =re.findall('split.*=.*([0-9]+).*', s)
+                d_key =  re.findall('.*(\w+)\].*',block)
+                if d_key:
+                    key = d_key[0]
+                # print('dkeu')
+                # print(block)
+                # print(key)
+                    d_feed =  re.findall('feed *= *([.0-9]+)',block)
+                    d_power = re.findall('power *= *([.0-9]+)',block)
+                    d_angle = re.findall('angle *= *([-.0-9]+)',block)
+                    d_radius =re.findall('radius *= *([-.0-9]+)',block)
+                    d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*',block)
+                    d_split =re.findall('split.*=.*([0-9]+).*',block)
 
-    if d_feed:    res_dict['feed']     = np.float(d_feed[0])
-    if d_power:   res_dict['power']    = np.float(d_power[0])
-    if d_angle:   res_dict['angle']    = np.float(d_angle[0])
-    if d_split:   res_dict['split']    = np.int(d_split[0])
-    if d_radius:  res_dict['radius']   = np.array([0,0,np.float(d_radius[0])])
-    if d_cut_dir: res_dict['cut_dir']  = d_cut_dir
+                    if d_feed:    global_dict[key]['feed']     = np.float(d_feed[0])
+                    if d_power:   global_dict[key]['power']    = np.float(d_power[0])
+                    if d_angle:   global_dict[key]['angle']    = np.float(d_angle[0])
+                    if d_split:   global_dict[key]['split']    = np.int(d_split[0])
+                    if d_radius:  global_dict[key]['radius']   = np.array([0,0,np.float(d_radius[0])])
+                    if d_cut_dir: global_dict[key]['cut_dir']  = d_cut_dir
 
-    return res_dict
+    return global_dict
 
 def extract_params(dxf, layer):
     glob_prop_dict=collections.defaultdict(dict)
@@ -1094,6 +1102,7 @@ def extract_params(dxf, layer):
             # d_coord =re.findall('.*coord_0.*', shape.raw_text)
             # if d_coord:   local_params.update({'ref_coord': [x for x in shape.insert]})
             # local_params.update({'layer': layer})
+            glob_prop_dict['layer']     = layer
             d_key =  re.findall('.*\[(\w+)\].*', shape.raw_text)
             if d_feed:  glob_prop_dict['feed']     = np.float(d_feed[0])
             if d_power: glob_prop_dict['power']    = np.float(d_power[0])
@@ -1134,8 +1143,9 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     # global_params = extract_params(dxf, 'props')
     # print('global params')
     # print(global_params)
-    par, key = extract_params(dxf, 'glob_props')
-    for var in par.items():
+
+    global_params = extract_global_params(dxf, 'glob_props')
+    for var in global_params:
         print(var)
 
     for p, layer in enumerate(layer_name):
