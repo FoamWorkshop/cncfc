@@ -416,7 +416,7 @@ def make_loop(b):
             next_idx_row = np.setdiff1d(find3dpoint(p, p_first), idx_row)[0]
             next_idx_col = find3dpoint(p[next_idx_row], p_first)
             el_next=p[ next_idx_row, next_idx_col^1]
-            print(el_next)
+            # print(el_next)
             p_out[i] = el_next
             p_first = el_next
             idx_row = next_idx_row
@@ -1087,6 +1087,13 @@ def extract_params(dxf, layer):
     forced_key=None
     for shape in dxf.entities:
         if layer in shape.layer and shape.dxftype == 'MTEXT':
+            glob_prop_dict={'feed':200,
+            'ref_coord':np.zeros(3),
+            'power':0,
+            'angle':0,
+            'radius':np.zeros(3),
+            'layer':layer,
+            'split':None}
 
             porp_str = shape.raw_text
             # print('--------------------------,forced_key)
@@ -1102,7 +1109,8 @@ def extract_params(dxf, layer):
             # d_coord =re.findall('.*coord_0.*', shape.raw_text)
             # if d_coord:   local_params.update({'ref_coord': [x for x in shape.insert]})
             # local_params.update({'layer': layer})
-            glob_prop_dict['layer']     = layer
+            # print('asdassadadasd',layer)
+            glob_prop_dict['layer']=layer
             d_key =  re.findall('.*\[(\w+)\].*', shape.raw_text)
             if d_feed:  glob_prop_dict['feed']     = np.float(d_feed[0])
             if d_power: glob_prop_dict['power']    = np.float(d_power[0])
@@ -1150,7 +1158,20 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
 
     for p, layer in enumerate(layer_name):
         local_params, forced_key = extract_params(dxf, layer)
-        prop_dict[p] = local_params
+        if local_params:
+            prop_dict[p] = local_params
+        else:
+            default_params={'feed':200,
+            'ref_coord':np.zeros(3),
+            'power':0,
+            'angle':0,
+            'radius':np.zeros(3),
+            'layer':layer,
+            'split':None}
+
+            prop_dict[p] = default_params
+
+
         # print('local params')
         # print(local_params)
         # print(p)
@@ -1164,14 +1185,6 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
             #     # if p == glob_set:
             #     #     prop_dict[p] = glob_prop_dict[glob_set]
             #     # else:
-            #     #     prop_dict={p: {'feed':200,
-            #     #                     'ref_coord':np.zeros(3),
-            #     #                     'power':0,
-            #     #                     'angle':0,
-            #     #                     'radius':np.zeros(3),
-            #     #                     'source':layer_name,
-            #     #                     'split':0}}
-            #     #
             #     # d_feed =  re.findall('feed *= *([.0-9]+)', porp_str)
             #     # d_power = re.findall('power *= *([.0-9]+)', porp_str)
             #     # d_angle = re.findall('angle *= *([-.0-9]+)', porp_str)
@@ -1294,26 +1307,82 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     # print(local_params)
     return (element_arr, prop_arr, prop_dict, (start_coord_arr, cut_dir_marker, cut_dir, split))
 
+def find_segment1(data, pt):
+    sol_idx = np.array([])
+    A=np.product(data[:,0,:]==pt, axis =1)
+    B=np.product(data[:,1,:]==pt, axis =1)
+
+    Aidx = np.where(A==1)[0]
+    Bidx = np.where(B==1)[0]
+
+    if Aidx.size:
+        sol_idx = np.append(sol_idx, Aidx)
+    if Bidx.size:
+        sol_idx = np.append(sol_idx, Bidx)
+
+    return sol_idx.astype(int)
+
+def find_unique_segments(data,pt):
+    sol_idx = np.array([])
+    d_list =[]
+    for line in data:
+        d, i = find_nearest(line, pt)
+        if i:
+            d_list.append(np.dot(*line[::-1]))
+        else:
+            d_list.append(np.dot(*line))
+    print(d_list)
+    # Aidx = np.where(A==1)[0]
+    # Bidx = np.where(B==1)[0]
+    #
+    # if Aidx.size:
+    #     sol_idx = np.append(sol_idx, Aidx)
+    # if Bidx.size:
+    #     sol_idx = np.append(sol_idx, Bidx)
+
+    # return sol_idx.astype(int)
+def data_fix(data):
+    # for line in data:
+    #     print(line)
+    print('data to fix', data.shape)
+    d=data.reshape(-1,3)
+    # for line in d:
+    #     print(line)
+    val, counts = np.unique(d, axis=0, return_counts=True)
+    print('single',np.where(counts == 1)[0])
+    idx3 = np.where(counts >=3)[0]
+    print('triple and more',idx3)
+    # print('counts',)
+    for i, idx in enumerate(idx3):
+        print(i,' #find segm    ents with:', val[idx])
+        seg_idx_arr = find_segment1(data,val[idx])
+        print(data[seg_idx_arr])
+        print(find_unique_segments(data[seg_idx_arr], val[idx]))
+    # print('unique points',np.unique(d, axis=0).shape)
+    # print(data[-1])
+    return 0
 def extract_dxf_path(dxf, layer_list, dxf_params):
     dec_acc, n_arc, l_arc = dxf_params
-    # print('layer list',layer_list)
     struct_data, prop_data, prop_dict, glob_params = dxf_read_1(dxf, layer_list, dec_acc, n_arc, l_arc)
-    # print('$$$$$$$$$$$$$$$$$$$44')
-    # print(prop_dict)
-    # print('$$$$$$$$$$$$$$$$$$$44')
-    # print(glob_params)
     start_coord_arr, cut_dir_marker, cut_dir, split = glob_params
+
+    data_fix(struct_data)
     io_path, io_rest, io_path_prop, io_rest_prop = find_io_path(struct_data, prop_data, start_coord_arr, prop_dict = prop_dict)
+
     pt0 = io_path[-1,-1]
     lo_path, lo_rest, lo_path_prop, lo_rest_prop = find_lo_path(io_rest, io_rest_prop, pt0, cut_dir = cut_dir, cut_dir_marker = cut_dir_marker, prop_dict = prop_dict)
+
+    print('iopath', io_path.shape)
+    # print('iorest', io_rest.shape)
+    print('lopath',lo_path.shape)
+
     return io_path, lo_path, io_path_prop, lo_path_prop, prop_dict
 
 def find_nearest(arr, pt0):
-
     tree = spatial.cKDTree(arr)
     d, i = tree.query(pt0, k=[1])
-
     return d, i
+
 def transform_pt(p, ref_coord = np.zeros(3), r=np.zeros(3), angle=0):
     # def M(axis, theta):
     #     return expm(np.cross(np.eye(3), axis/norm(axis)*np.radians(angle)))
@@ -1362,6 +1431,7 @@ def plot_path1(ss):
     ax = fig.gca(projection='3d')
 
     for seq in ss:
+        # print(seq)
         for pp in seq:
             # print('TTTTTTTTTTTTTTt')
             # print(pp)
@@ -1373,20 +1443,19 @@ def plot_path1(ss):
                     p1 = path[i][0]
                     p2 = path[i][1]
                     prop_n = prop[i]
-                    # print('88888888888888888888888888888888888')
-                    # print(prop_dict1)
-                    # print(prop_dict1['layer'])
+
                     pd = prop_dict1[prop_n]
                     c = color_list[prop_n]
-                    # print(pd, prop_n)
+                    # print('            DDDDDD',pd)
                     p1t = transform_pt(p1,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
                     p2t = transform_pt(p2,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
-                    px = np.hstack((p1t[0], p2t[0]))
-                    py = np.hstack((p1t[1], p2t[1]))
-                    pz = np.hstack((p1t[2], p2t[2]))
-                    # ax.plot(px, py, pz, color=c)
+                    if p1t[2] < 0  or p2t[2] <0:
+                        print(p1t[2], p2t[2])
+                    # px = np.hstack((p1t[0], p2t[0]))
+                    # py = np.hstack((p1t[1], p2t[1]))
+                    # pz = np.hstack((p1t[2], p2t[2]))
                     ax.quiver(p1t[0], p1t[1], p1t[2],
-                              p2t[0]-p1t[0], p2t[1]-p1t[1], p2t[2]-p1t[2], color=c, arrow_length_ratio=0.1)
+                              p2t[0]-p1t[0], p2t[1]-p1t[1], p2t[2]-p1t[2], color=c, arrow_length_ratio=0)
     plt.grid(True)
     plt.show()
 
@@ -1570,7 +1639,7 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
         # print(prop_dict)
         # # print('lvl1')
         for p in set(sol_prop):
-            if 'split' in prop_dict[p]:
+            if prop_dict[p]['split']:
                 sol_list = []
                 prop_list = []
                 splits = prop_dict[p]['split']

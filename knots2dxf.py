@@ -1,25 +1,26 @@
+#!/usr/bin/python3
 import ezdxf
+import argparse
+import re
+def main(args):
+    points=[]
+    f_name = args.input
+    with open(f_name,'r') as f:
+        text = f.readlines()
+        layer_name = text[0]
+        for line in text[1:]:
+            nodes = [ float(var) for var in re.findall('([\d\.-]+)',line)]
+            print(nodes)
+            points.append(nodes)
 
-points=[]
-f_name = 'naca4416.dat'
-f=open(f_name,'r')
 
-for line in f:
-    line = line.strip(' ')
-    line = line.strip('\n')
-    line = line.split(',')
+    dwg = ezdxf.new('AC1015')
+    msp = dwg.modelspace()
+    msp.add_lwpolyline(points)
+    dwg.saveas(f_name + '.dxf')
 
-    if type(line)== str:
-        line = line.split()
-    # print()
-    # print()
-    points.append((float(line[0]), float(line[1])))
-f.close()
-print(points)
-dwg = ezdxf.new('AC1015')
-msp = dwg.modelspace()
-
-# points = [(0, 0), (3, 0), (6, 3), (6, 6)]
-# points = [(0, 0), (3, 0), (6, 3), (6, 6)]
-msp.add_lwpolyline(points)
-dwg.saveas(f_name + '.dxf')
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='test')
+    parser.add_argument('-i', '--input', help='airfoil dat profile')
+    args = parser.parse_args()
+    main(args)
