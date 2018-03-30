@@ -1156,8 +1156,12 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     for var in global_params:
         print(var)
 
+    print(layer_name)
+
     for p, layer in enumerate(layer_name):
+
         local_params, forced_key = extract_params(dxf, layer)
+
         if local_params:
             prop_dict[p] = local_params
         else:
@@ -1171,81 +1175,13 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
 
             prop_dict[p] = default_params
 
-
-        # print('local params')
-        # print(local_params)
-        # print(p)
-        # for shape in dxf.entities:
-
-            # if shape.layer == layer and shape.dxftype == 'MTEXT':
-            #     # print(shape.raw_text)
-            #     prop_str = shape.raw_text
-            #     # glob_set =  re.findall('.*\[(\w+)\].*', shape.raw_text)
-            #     #
-            #     # if p == glob_set:
-            #     #     prop_dict[p] = glob_prop_dict[glob_set]
-            #     # else:
-            #     # d_feed =  re.findall('feed *= *([.0-9]+)', porp_str)
-            #     # d_power = re.findall('power *= *([.0-9]+)', porp_str)
-            #     # d_angle = re.findall('angle *= *([-.0-9]+)', porp_str)
-            #     # d_radius =re.findall('.*radius.*=.*([-.0-9]+)', porp_str)
-            #     # d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*', prop_str)
-            #     # print(porp_str)
-            #     # d_split =re.findall('.*(split).*=.*([0-9]+).*', prop_str)
-            #     # print('UUUUUUUUUUUUUUUUUu', d_split)
-            #     # print(porp_str)
-            #     # print('dradius', d_radius)
-            #     # print('dradius', d_radius[0])
-            #     # if d_feed:  prop_dict[p]['feed']=  np.float(d_feed[0])
-            #     # if d_power: prop_dict[p]['power']= np.float(d_power[0])
-            #     # if d_angle: prop_dict[p]['angle']= np.float(d_angle[0])
-            #     # print('split',d_split)
-            #     # if d_split: prop_dict[p]['split']= np.int(d_split[0])
-            #     # if d_radius:prop_dict[p]['radius']= np.array([0,0,np.float(d_radius[0])])
-            #
-            #     # if d_feed:
-            #     #     prop_dict[p]['feed'] = np.float(d_feed[0][1])
-            #     #
-            #     # if d_power:
-            #     #     prop_dict[p]['power'] = np.float(d_power[0][1])
-            #     #
-            #     # if d_angle:
-            #     #     prop_dict[p]['angle']=np.float(d_angle[0][1])
-            #     #
-            #     # if d_split:
-            #     #     print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%',np.int(d_split[0]))
-            #     #     prop_dict[p]['split']=np.int(d_split[0])
-            #     #
-            #     # if d_radius:
-            #     #     prop_dict[p]['radius']= np.array([0,0,np.float(d_radius[0][1])])
-            #
-            #
-            #
-            #     # if d_cut_dir:
-            #     #     # print('!!!!!!!!!!!!!!!!!!!!!!!!1cut_dir')
-            #     #     # print(d_cut_dir)
-            #     #     cut_dir = d_cut_dir[0]
-            #
-            #     # if d_split:
-            #     #     # print('!!!!!!!!!!!!!!!!!!!!!!!!1cut_dir')
-            #     #     # print(d_cut_dir)
-            #     #     # split = dc
-            #     #     split = d_split
-            #
-            #     if shape.raw_text == 'o':
-            #         path_offset = [x for x in shape.insert]
-            #         # print('loop cut dir marker')
-            #         # print(path_offset)
-            #         cut_dir_marker=path_offset
-            #
-            #     if shape.raw_text == 'start':
-            #         start_coord = tuple(round(x, tol) for x in shape.insert)
-            #         # print('start coord: {}'.format(start_coord))
-
-
-
         for shape in dxf.entities:
+
             if shape.layer == layer:
+                if shape.dxftype == 'MTEXT':
+                    if 'start'in shape.raw_text:
+                        print('found start')
+                        start_coord = tuple(round(x, tol) for x in shape.insert)
 
                 if shape.dxftype == 'LINE':
                     line_count += 1
@@ -1285,26 +1221,10 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
                         elements_list.append(ARC_knots_list[i:i + 2])
                         prop_list.append(p)
 
-
-
-        # struct_data=np.zeros(element_arr.shape[0], dtype = dxf_data)
-        #
-        # for i, segment in enumerate(element_arr):
-        #     struct_data[i]['segm']=segment
-        #     struct_data[i]['props']=p
-        #     # struct_data[i]['feed']=layer_props['feed']
-        #     # struct_data[i]['power'] =layer_props['power']
-        #     # struct_data[i]['angle'] =layer_props['angle']
-        #     # struct_data[i]['radius']=layer_props['radius']
-        #     # struct_data[i]['source']=layer_props['source']
-        #
-        # struct_data_list.append(struct_data)
-
     element_arr=np.array(elements_list)
     prop_arr=np.array(prop_list)
     start_coord_arr = np.array(start_coord)
-    # print('local_params')
-    # print(local_params)
+
     return (element_arr, prop_arr, prop_dict, (start_coord_arr, cut_dir_marker, cut_dir, split))
 
 def find_segment1(data, pt):
@@ -1332,15 +1252,7 @@ def find_unique_segments(data,pt):
         else:
             d_list.append(np.dot(*line))
     print(d_list)
-    # Aidx = np.where(A==1)[0]
-    # Bidx = np.where(B==1)[0]
-    #
-    # if Aidx.size:
-    #     sol_idx = np.append(sol_idx, Aidx)
-    # if Bidx.size:
-    #     sol_idx = np.append(sol_idx, Bidx)
 
-    # return sol_idx.astype(int)
 def data_fix(data):
     # for line in data:
     #     print(line)
@@ -1363,14 +1275,26 @@ def data_fix(data):
     return 0
 def extract_dxf_path(dxf, layer_list, dxf_params):
     dec_acc, n_arc, l_arc = dxf_params
+    print('start extract dxf')
+    print('LAYER_LIST',layer_list)
     struct_data, prop_data, prop_dict, glob_params = dxf_read_1(dxf, layer_list, dec_acc, n_arc, l_arc)
+    print('done - extract dxf')
     start_coord_arr, cut_dir_marker, cut_dir, split = glob_params
+    print('glob_parameters')
+    print(start_coord_arr)
 
-    data_fix(struct_data)
     io_path, io_rest, io_path_prop, io_rest_prop = find_io_path(struct_data, prop_data, start_coord_arr, prop_dict = prop_dict)
-
+    print('found path')
     pt0 = io_path[-1,-1]
-    lo_path, lo_rest, lo_path_prop, lo_rest_prop = find_lo_path(io_rest, io_rest_prop, pt0, cut_dir = cut_dir, cut_dir_marker = cut_dir_marker, prop_dict = prop_dict)
+    print(pt0)
+    print(io_rest)
+    if io_rest:
+        lo_path, lo_rest, lo_path_prop, lo_rest_prop = find_lo_path(io_rest, io_rest_prop, pt0, cut_dir = cut_dir, cut_dir_marker = cut_dir_marker, prop_dict = prop_dict)
+    else:
+        lo_path = np.array([])
+        lo_rest =  np.array([])
+        lo_path_prop =np.array([])
+        lo_rest_prop =np.array([])
 
     print('iopath', io_path.shape)
     # print('iorest', io_rest.shape)
@@ -1449,8 +1373,8 @@ def plot_path1(ss):
                     # print('            DDDDDD',pd)
                     p1t = transform_pt(p1,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
                     p2t = transform_pt(p2,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
-                    if p1t[2] < 0  or p2t[2] <0:
-                        print(p1t[2], p2t[2])
+                    # if p1t[2] < 0  or p2t[2] <0:
+                        # print(p1t[2], p2t[2])
                     # px = np.hstack((p1t[0], p2t[0]))
                     # py = np.hstack((p1t[1], p2t[1]))
                     # pz = np.hstack((p1t[2], p2t[2]))
@@ -1620,19 +1544,22 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
     unique_knots_1 = unique_knots[np.where(counts == 1)[0]]
     unique_knots_3 = unique_knots[np.where(counts >= 3)[0]]
 
-    stop_knot = unique_knots_3
+
 
     if start_pt.size:
         IO_knot_d, IO_knot_i = find_nearest(unique_knots_1, start_pt)
         IO_knot = unique_knots_1[IO_knot_i]
+        stop_knot = np.array([])
     else:
         IO_knot = unique_knots_1
+        stop_knot = unique_knots_3[0]
 
+    print('io knot',IO_knot[0])
     # print('IO knot: ',IO_knot)
     # print('IO knot: ',IO_knot)
     # print(prop_data)
-
-    sol, rest, sol_prop, rest_prop = sort_segments(arr, IO_knot[0], stop_pt=stop_knot[0], prop_data = prop_data)
+    print('stop knot:', stop_knot)
+    sol, rest, sol_prop, rest_prop = sort_segments(arr, IO_knot[0], stop_pt=stop_knot, prop_data = prop_data)
     # print('prop dict',prop_dict)
     if prop_dict:
         # print('prop_dict')

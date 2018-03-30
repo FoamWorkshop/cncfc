@@ -100,8 +100,74 @@ import gcodelib
 import os
 import re
 import matplotlib.pyplot as plt
+import ezdxf
+from collections import defaultdict
+from copy import deepcopy
+
+def nested_dict():
+    return defaultdict(nested_dict)
 
 
+def merge(dict1, dict2):
+    ''' Return a new dictionary by merging two dictionaries recursively. '''
+
+    result = deepcopy(dict1)
+
+    for key, value in dict2.items():
+        if isinstance(value, collections.Mapping):
+            result[key] = merge(result.get(key, {}), value)
+        else:
+            result[key] = deepcopy(dict2[key])
+
+    return result
+def update_dict(d, u):
+    for k, v in u.items():
+        if isinstance(v, collections.Mapping):
+            default = v.copy()
+            default.clear()
+            r = update_dict(d.get(k, default), v)
+            d[k] = r
+        else:
+            d[k] = v
+    return d
+
+def layers2seq(fname, req_layer):
+    '''layer naming convention:
+        A#XX#Y#ZZ(comment)
+        A - layername
+        XX- sequence_number
+        Y - column number 0-XY, 1-UV, _ - flat
+        ZZ- section number, might be empty
+        (comment)
+    '''
+
+    key = r'(^{})#(\d+)#([01_])#((\d+)?)(.*)'.format(req_layer)
+    # regex0 = re.compile("^{}(\(.*\))?$".format(req_layer), re.IGNORECASE)
+    layer_list = []
+    seq_layer_list = nested_dict()
+    dwg = ezdxf.readfile(fname)
+    for layer in dwg.layers:
+        split_layer_name = re.findall(key, layer.dxf.name, re.IGNORECASE)
+        if split_layer_name:
+            print(split_layer_name[0])
+            # seq_idx = split_layer_name[0][1]
+            # col_idx = split_layer_name[0][2]
+            # if seq_layer_list[seq_idx][col_idx].items:
+            #     seq_layer_list[seq_idx][col_idx].append(layer.dxf.name)
+            # else:
+            #     seq_layer_list[seq_idx][col_idx]=[]
+            # seq_layer_list=update_dict(seq_layer_list, {seq_idx:{col_idx:layer.dxf.name}})
+            # seq_layer_list=merge(seq_layer_list, {seq_idx:{col_idx:[layer.dxf.name]}})
+            # layer_list.append(split_layer_name)
+
+    # sorted_layer_list = sorted(layer_list, key = lambda tup: (tup[1], tup[2]))
+
+
+
+
+    print(seq_layer_list)
+    # print('regex',layer_list)
+    return 0
 
 def main(args):
 
@@ -133,7 +199,8 @@ def main(args):
     req_layer = layer_list[0]
     dxf_params = (dec_acc, n_arc, l_arc)
     for i, files_dxf_member in enumerate(files_dxf):
-
+        print(files_dxf_member)
+        layers2seq(files_dxf_member, req_layer)
         case_name = os.path.splitext(files_dxf_member)
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = [var.name for var in dxf.layers]
@@ -141,7 +208,7 @@ def main(args):
         regex0 = re.compile("^{}(\(.*\))?$".format(req_layer), re.IGNORECASE)
         z2 = [layer for layer in dxf_layers for m in [regex2.search(layer)] if m]
         z0 = [layer for layer in dxf_layers for m in [regex0.search(layer)] if m]
-        # print(z0)
+
         if z0 and z2:
             print('Layer names are anbiguous: {}\nRename layers to match the pattern.'.format(z0+z2))
         else:
@@ -159,18 +226,19 @@ def main(args):
                 else:
                     ss.append(pp)
                 # print(ss)
-                print(lo_path1.shape)
+                # print(lo_path1.shape)
 
             if z2:
                 print(z2)
                 # print('sequences')
                 regex3 = re.compile("^\w+#\d+", re.IGNORECASE)
                 z3 = sorted(list(set([m.group() for layer in z2 for m in [regex3.search(layer)] if m])))
-                # print(z3)
+                # print('z', z3)
                 seq_list =[]
                 for seq_step in z3:
                     regex4 = re.compile("{}#[0-1]".format(seq_step), re.IGNORECASE)
                     z5 = sorted(list(set([m.group() for layer in z2 for m in [regex4.search(layer)] if m])))
+                    # print('z5', z5)
                     plane_sections_list = []
                     for z6 in z5:
                         regex5 = re.compile("{}#.*".format(z6), re.IGNORECASE)
@@ -178,7 +246,9 @@ def main(args):
                         plane_sections_list.append(z7)
                     seq_list.append(plane_sections_list)
                 ss=[]
+
                 for i, seq in enumerate(seq_list):
+                    # print(seq_list)
                     # print('\nseq num: ', i)
                     pp0 = []
                     pp1 = []
@@ -195,7 +265,7 @@ def main(args):
         # cncfclib.plot_path1(ss)
         # gcodelib.print_stats(ss)
         # print(ss)
-        gcodelib.print_gcode(ss)
+        # gcodelib.print_gcode(ss)
 
 
     print('\nDone. Thank you!')
