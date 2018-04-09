@@ -131,6 +131,30 @@ def update_dict(d, u):
             d[k] = v
     return d
 
+def print_nested(val, buf, nesting = -1, prefix ='', bt=''):
+    if len(val):
+        nesting += 1
+        for i, k in enumerate(sorted(val)):
+            # print('val ',k)
+            text_path= k
+            if nesting==0:
+                bt=' '*(nesting-1)
+            else:
+                if i+1 == len(val):
+                    bt=prefix +'*--'
+                else:
+                    bt=prefix + '|--'
+            buf.append('{}{}{}'.format(bt, text_path, ''))
+            if len(val) > 1 and i != len(val) - 1:
+                tmp_prefix = prefix + '| '
+            else:
+                tmp_prefix = prefix + ' '
+            buf = print_nested(val[k], buf, nesting, tmp_prefix, bt)
+    else:
+        buf.append(val)
+    return buf
+
+
 def layers2seq(fname, req_layer):
     '''layer naming convention:
         A#XX#Y#ZZ(comment)
@@ -153,6 +177,9 @@ def layers2seq(fname, req_layer):
             seq_idx = split_layer_name[0][1]
             col_idx = split_layer_name[0][2]
             seq_layer_list[seq_idx][col_idx][layer.dxf.name]=[]
+
+    for var in print_nested(seq_layer_list, []):
+        if var: print(var)
 
     sorted_layer_list = sorted(layer_list, key = lambda tup: (tup[1], tup[2]))
 
@@ -210,35 +237,36 @@ def main(args):
 
     req_layer = layer_list[0]
     dxf_params = (dec_acc, n_arc, l_arc)
-    for i, files_dxf_member in enumerate(files_dxf):
+
+    files_dxf_member = files_dxf[0]
         # print(files_dxf_member)
-        seq_list = layers2seq(files_dxf_member, req_layer)
-        case_name = os.path.splitext(files_dxf_member)
-        dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
-        dxf_layers = [var.name for var in dxf.layers]
+    seq_list = layers2seq(files_dxf_member, req_layer)
+    case_name = os.path.splitext(files_dxf_member)
+    dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
+    dxf_layers = [var.name for var in dxf.layers]
 
-        if seq_list:
-            ss=[]
+    if seq_list:
+        ss=[]
 
-            for i, seq in enumerate(seq_list):
+        for i, seq in enumerate(seq_list):
 
-                pp =[]
-                for j, plane in enumerate(seq):
+            pp =[]
+            for j, plane in enumerate(seq):
 
-                    io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(dxf, plane, dxf_params)
-                    pp.append([io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1])
+                io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(dxf, plane, dxf_params)
+                pp.append([io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1])
 
-                if len(pp)==1:
-                    ss.append(pp*2)
-                else:
-                    ss.append(pp)
+            if len(pp)==1:
+                ss.append(pp*2)
+            else:
+                ss.append(pp)
 
-            # cncfclib.plot_path1(ss)
-            # gcodelib.print_stats(ss)
-            # print(ss)
-            gcodelib.print_gcode(ss)
-        else:
-            print('No layers matching the pattern. Layer list is empty')
+        # cncfclib.plot_path1(ss)
+        gcodelib.print_stats(ss)
+        # print(ss)
+        gcodelib.print_gcode(ss)
+    else:
+        print('No layers matching the pattern. Layer list is empty')
 
 
     print('\nDone. Thank you!')
