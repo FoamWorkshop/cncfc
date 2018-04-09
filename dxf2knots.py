@@ -136,7 +136,7 @@ def layers2seq(fname, req_layer):
         A#XX#Y#ZZ(comment)
         A - layername
         XX- sequence_number
-        Y - column number 0-XY, 1-UV, _ - flat
+        Y - column number 0 - flat, 1-XY, 2-UV
         ZZ- section number, might be empty
         (comment)
     '''
@@ -149,25 +149,24 @@ def layers2seq(fname, req_layer):
     for layer in dwg.layers:
         split_layer_name = re.findall(key, layer.dxf.name, re.IGNORECASE)
         if split_layer_name:
-            print(split_layer_name[0])
-            # seq_idx = split_layer_name[0][1]
-            # col_idx = split_layer_name[0][2]
-            # if seq_layer_list[seq_idx][col_idx].items:
-            #     seq_layer_list[seq_idx][col_idx].append(layer.dxf.name)
-            # else:
-            #     seq_layer_list[seq_idx][col_idx]=[]
-            # seq_layer_list=update_dict(seq_layer_list, {seq_idx:{col_idx:layer.dxf.name}})
-            # seq_layer_list=merge(seq_layer_list, {seq_idx:{col_idx:[layer.dxf.name]}})
-            # layer_list.append(split_layer_name)
+            seq_idx = split_layer_name[0][1]
+            col_idx = split_layer_name[0][2]
+            seq_layer_list[seq_idx][col_idx][layer.dxf.name]=[]
 
-    # sorted_layer_list = sorted(layer_list, key = lambda tup: (tup[1], tup[2]))
+    sorted_layer_list = sorted(layer_list, key = lambda tup: (tup[1], tup[2]))
 
 
+    seq_list = []
+    for seq_key in sorted(seq_layer_list.keys()):
+        col_list = []
+        for col_key in sorted(seq_layer_list[seq_key].keys()):
+            layer_list = []
+            for layer in sorted(seq_layer_list[seq_key][col_key].keys()):
+                layer_list.append(layer)
+            col_list.append(layer_list)
+        seq_list.append(col_list)
 
-
-    print(seq_layer_list)
-    # print('regex',layer_list)
-    return 0
+    return seq_list
 
 def main(args):
 
@@ -199,54 +198,58 @@ def main(args):
     req_layer = layer_list[0]
     dxf_params = (dec_acc, n_arc, l_arc)
     for i, files_dxf_member in enumerate(files_dxf):
-        print(files_dxf_member)
-        layers2seq(files_dxf_member, req_layer)
+        # print(files_dxf_member)
+
+        seq_list = layers2seq(files_dxf_member, req_layer)
+
         case_name = os.path.splitext(files_dxf_member)
         dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
         dxf_layers = [var.name for var in dxf.layers]
-        regex2 = re.compile("^({})#.*".format(req_layer), re.IGNORECASE)
-        regex0 = re.compile("^{}(\(.*\))?$".format(req_layer), re.IGNORECASE)
-        z2 = [layer for layer in dxf_layers for m in [regex2.search(layer)] if m]
-        z0 = [layer for layer in dxf_layers for m in [regex0.search(layer)] if m]
+        # regex2 = re.compile("^({})#.*".format(req_layer), re.IGNORECASE)
+        # regex0 = re.compile("^{}(\(.*\))?$".format(req_layer), re.IGNORECASE)
+        # z2 = [layer for layer in dxf_layers for m in [regex2.search(layer)] if m]
+        # z0 = [layer for layer in dxf_layers for m in [regex0.search(layer)] if m]
 
-        if z0 and z2:
+        if 0:#z0 and z2:
             print('Layer names are anbiguous: {}\nRename layers to match the pattern.'.format(z0+z2))
         else:
 
-            if z0:
-                plane = z0
-                pp =[]
-                ss =[]
-
-                io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(dxf, plane, dxf_params)
-                pp.append([io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1])
-                # print(len(pp))
-                if len(pp)==1:
-                    ss.append(pp*2)
-                else:
-                    ss.append(pp)
-                # print(ss)
-                # print(lo_path1.shape)
-
-            if z2:
-                print(z2)
-                # print('sequences')
-                regex3 = re.compile("^\w+#\d+", re.IGNORECASE)
-                z3 = sorted(list(set([m.group() for layer in z2 for m in [regex3.search(layer)] if m])))
-                # print('z', z3)
-                seq_list =[]
-                for seq_step in z3:
-                    regex4 = re.compile("{}#[0-1]".format(seq_step), re.IGNORECASE)
-                    z5 = sorted(list(set([m.group() for layer in z2 for m in [regex4.search(layer)] if m])))
-                    # print('z5', z5)
-                    plane_sections_list = []
-                    for z6 in z5:
-                        regex5 = re.compile("{}#.*".format(z6), re.IGNORECASE)
-                        z7 = sorted(list(set([m.group() for layer in z2 for m in [regex5.search(layer)] if m])))
-                        plane_sections_list.append(z7)
-                    seq_list.append(plane_sections_list)
+            # if z0:
+            #     plane = z0
+            #
+            #     print('FFFFFFFFFFFFFFFFFFFFF',plane)
+            #     pp =[]
+            #     ss =[]
+            #
+            #     io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(dxf, plane, dxf_params)
+            #     pp.append([io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1])
+            #     # print(len(pp))
+            #     if len(pp)==1:
+            #         ss.append(pp*2)
+            #     else:
+            #         ss.append(pp)
+            #     # print(ss)
+            #     # print(lo_path1.shape)
+            #
+            # if z2:
+            #     print('zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz',z2)
+            #     # print('sequences')
+            #     regex3 = re.compile("^\w+#\d+", re.IGNORECASE)
+            #     z3 = sorted(list(set([m.group() for layer in z2 for m in [regex3.search(layer)] if m])))
+            #     # print('z', z3)
+            #     seq_list =[]
+            #     for seq_step in z3:
+            #         regex4 = re.compile("{}#[0-1]".format(seq_step), re.IGNORECASE)
+            #         z5 = sorted(list(set([m.group() for layer in z2 for m in [regex4.search(layer)] if m])))
+            #         # print('z5', z5)
+            #         plane_sections_list = []
+            #         for z6 in z5:
+            #             regex5 = re.compile("{}#.*".format(z6), re.IGNORECASE)
+            #             z7 = sorted(list(set([m.group() for layer in z2 for m in [regex5.search(layer)] if m])))
+            #             plane_sections_list.append(z7)
+            #         seq_list.append(plane_sections_list)
                 ss=[]
-
+            #
                 for i, seq in enumerate(seq_list):
                     # print(seq_list)
                     # print('\nseq num: ', i)
@@ -257,12 +260,13 @@ def main(args):
 
                         io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(dxf, plane, dxf_params)
                         pp.append([io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1])
+
                     if len(pp)==1:
                         ss.append(pp*2)
                     else:
                         ss.append(pp)
 
-        # cncfclib.plot_path1(ss)
+        cncfclib.plot_path1(ss)
         # gcodelib.print_stats(ss)
         # print(ss)
         # gcodelib.print_gcode(ss)
