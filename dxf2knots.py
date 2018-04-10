@@ -169,31 +169,32 @@ def layers2seq(fname, req_layer):
     key = r'(^{})#(\d+)#([01_])#((\d+)?)(.*)'.format(req_layer)
     # regex0 = re.compile("^{}(\(.*\))?$".format(req_layer), re.IGNORECASE)
     layer_list = []
-    seq_layer_list = nested_dict()
+    seq_layer_dict = nested_dict()
     dwg = ezdxf.readfile(fname)
     for layer in dwg.layers:
         split_layer_name = re.findall(key, layer.dxf.name, re.IGNORECASE)
         if split_layer_name:
             seq_idx = split_layer_name[0][1]
             col_idx = split_layer_name[0][2]
-            seq_layer_list[seq_idx][col_idx][layer.dxf.name]=[]
+            seq_layer_dict[seq_idx][col_idx][layer.dxf.name]=[]
 
-    for var in print_nested(seq_layer_list, []):
+    print('{:-^79}'.format('MODEL STRUCTURE'))
+    for var in print_nested(seq_layer_dict, []):
         if var: print(var)
 
     sorted_layer_list = sorted(layer_list, key = lambda tup: (tup[1], tup[2]))
 
     seq_list = []
-    for seq_key in sorted(seq_layer_list.keys()):
+    for seq_key in sorted(seq_layer_dict.keys()):
         col_list = []
-        for col_key in sorted(seq_layer_list[seq_key].keys()):
+        for plane_key in sorted(seq_layer_dict[seq_key].keys()):
             layer_list = []
-            for layer in sorted(seq_layer_list[seq_key][col_key].keys()):
+            for layer in sorted(seq_layer_dict[seq_key][plane_key].keys()):
                 layer_list.append(layer)
             col_list.append(layer_list)
         seq_list.append(col_list)
 
-    return seq_list
+    return seq_list, seq_layer_dict
 
 def print_setings(args):
 
@@ -223,8 +224,9 @@ def print_setings(args):
 
 def main(args):
 
-    dxf_list = args.input
-    layer_list = args.layer
+    fname_dxf = args.input
+    lname_dxf = args.layer
+
     dec_acc = args.accuracy
     n_arc = args.arc_seg_num
     l_arc = args.arc_seg_len
@@ -233,41 +235,30 @@ def main(args):
     eq_sect_skip = args.skip_eq_sections
     z_coord = args.z_coord
     output_path = args.output_path
-    files_dxf = dxf_list
 
-    req_layer = layer_list[0]
     dxf_params = (dec_acc, n_arc, l_arc)
 
-    files_dxf_member = files_dxf[0]
-        # print(files_dxf_member)
-    seq_list = layers2seq(files_dxf_member, req_layer)
-    case_name = os.path.splitext(files_dxf_member)
-    dxf = dxfgrabber.readfile(files_dxf_member, {"assure_3d_coords": True})
-    dxf_layers = [var.name for var in dxf.layers]
+    dxf = dxfgrabber.readfile(fname_dxf, {"assure_3d_coords": True})
+
+    seq_list, seq_dict = layers2seq(fname_dxf, lname_dxf)
 
     if seq_list:
         ss=[]
-
-        for i, seq in enumerate(seq_list):
-
+        for seq in seq_list:
             pp =[]
-            for j, plane in enumerate(seq):
-
+            for plane in seq:
+                # print(plane)
                 io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(dxf, plane, dxf_params)
                 pp.append([io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1])
-
             if len(pp)==1:
                 ss.append(pp*2)
             else:
                 ss.append(pp)
 
         # cncfclib.plot_path1(ss)
-        gcodelib.print_stats(ss)
-        # print(ss)
         gcodelib.print_gcode(ss)
     else:
         print('No layers matching the pattern. Layer list is empty')
-
 
     print('\nDone. Thank you!')
 
@@ -281,8 +272,8 @@ if __name__ == '__main__':
     #*********************************************************************PROGRAM
 
     parser = argparse.ArgumentParser(description='test')
-    parser.add_argument('-i', '--input', nargs='+', help='input filenames')
-    parser.add_argument('-l', '--layer', nargs='+', help='input layers')
+    parser.add_argument('-i', '--input', type=str, help='input filenames')
+    parser.add_argument('-l', '--layer', type=str, help='input layers')
     parser.add_argument('-a', '--accuracy', type=int,
                         default=dflt_dec_acc, help='decimal accuracy, default: 3')
     parser.add_argument('-narc', '--arc_seg_num', type=int,

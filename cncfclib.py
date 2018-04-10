@@ -1034,9 +1034,9 @@ def remove_mid_nodes(arr):
         c=np.linalg.norm(np.cross(vA,vB),axis=1)
         idx=np.where(c<2)[0]
         if np.size(idx):
-            print(p)
-            print(c[idx])
-            print(np.size(p[:,0])-1)
+            # print(p)
+            # print(c[idx])
+            # print(np.size(p[:,0])-1)
             idxi=np.where(idx>=np.size(p[:,0])-1)[0]
             if idxi:
                 idx[idxi]=0
@@ -1048,8 +1048,8 @@ def remove_mid_nodes(arr):
 def make_chains(section_list):
     chain_list
     p_arr =  np.array(section)
-    print(p_arr.shape[0])
-    print('section: ',i)
+    # print(p_arr.shape[0])
+    # print('section: ',i)
     if p_arr.shape[0]>3:
         prof=make_loop(p_arr)
     return chain_list
@@ -1153,10 +1153,10 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     # print(global_params)
 
     global_params = extract_global_params(dxf, 'glob_props')
-    for var in global_params:
-        print(var)
+    # for var in global_params:
+    #     print(var)
 
-    print(layer_name)
+    # print(layer_name)
 
     for p, layer in enumerate(layer_name):
 
@@ -1180,7 +1180,7 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
             if shape.layer == layer:
                 if shape.dxftype == 'MTEXT':
                     if 'start'in shape.raw_text:
-                        print('found start')
+                        # print('found start')
                         start_coord = tuple(round(x, tol) for x in shape.insert)
 
                 if shape.dxftype == 'LINE':
@@ -1273,21 +1273,22 @@ def data_fix(data):
     # print('unique points',np.unique(d, axis=0).shape)
     # print(data[-1])
     return 0
+
 def extract_dxf_path(dxf, layer_list, dxf_params):
     dec_acc, n_arc, l_arc = dxf_params
-    print('start extract dxf')
-    print('LAYER_LIST',layer_list)
+    # print('start extract dxf')
+    # print('LAYER_LIST',layer_list)
     struct_data, prop_data, prop_dict, glob_params = dxf_read_1(dxf, layer_list, dec_acc, n_arc, l_arc)
-    print('done - extract dxf')
+    # print('done - extract dxf')
     start_coord_arr, cut_dir_marker, cut_dir, split = glob_params
-    print('glob_parameters')
-    print(start_coord_arr)
+    # print('glob_parameters')
+    # print(start_coord_arr)
 
     io_path, io_rest, io_path_prop, io_rest_prop = find_io_path(struct_data, prop_data, start_coord_arr, prop_dict = prop_dict)
-    print('found path')
+    # print('found path')
     pt0 = io_path[-1,-1]
-    print(pt0)
-    print(io_rest)
+    # print(pt0)
+    # print(io_rest)
     if io_rest:
         lo_path, lo_rest, lo_path_prop, lo_rest_prop = find_lo_path(io_rest, io_rest_prop, pt0, cut_dir = cut_dir, cut_dir_marker = cut_dir_marker, prop_dict = prop_dict)
     else:
@@ -1296,9 +1297,9 @@ def extract_dxf_path(dxf, layer_list, dxf_params):
         lo_path_prop =np.array([])
         lo_rest_prop =np.array([])
 
-    print('iopath', io_path.shape)
+    # print('iopath', io_path.shape)
     # print('iorest', io_rest.shape)
-    print('lopath',lo_path.shape)
+    # print('lopath',lo_path.shape)
 
     return io_path, lo_path, io_path_prop, lo_path_prop, prop_dict
 
@@ -1554,11 +1555,11 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
         IO_knot = unique_knots_1
         stop_knot = unique_knots_3[0]
 
-    print('io knot',IO_knot[0])
+    # print('io knot',IO_knot[0])
     # print('IO knot: ',IO_knot)
     # print('IO knot: ',IO_knot)
     # print(prop_data)
-    print('stop knot:', stop_knot)
+    # print('stop knot:', stop_knot)
     sol, rest, sol_prop, rest_prop = sort_segments(arr, IO_knot[0], stop_pt=stop_knot, prop_data = prop_data)
     # print('prop dict',prop_dict)
     if prop_dict:
