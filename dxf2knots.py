@@ -92,7 +92,7 @@ program algorithm:
 
 import argparse
 import sys
-import dxfgrabber
+
 import numpy as np
 import pickle
 import cncfclib
@@ -102,6 +102,7 @@ import re
 import matplotlib.pyplot as plt
 import ezdxf
 from collections import defaultdict
+from collections import OrderedDict
 from copy import deepcopy
 
 def nested_dict():
@@ -157,19 +158,20 @@ def print_nested(val, buf, nesting = -1, prefix ='', bt=''):
 
 def layers2seq(fname, req_layer):
     '''layer naming convention:
-        A#XX#Y#ZZ(comment)
+        A#XX#Y#ZZ~comment
         A - layername
         XX- sequence_number
         Y - column number 0 - flat, 1-XY, 2-UV
         ZZ- section number, might be empty
-        (comment)
-
+        ~comment
     '''
 
     key = r'(^{})#(\d+)#([01_])#((\d+)?)(.*)'.format(req_layer)
     # regex0 = re.compile("^{}(\(.*\))?$".format(req_layer), re.IGNORECASE)
     layer_list = []
     seq_layer_dict = nested_dict()
+    # seq_layer_dict_test = OrderedDict({})
+
     dwg = ezdxf.readfile(fname)
     for layer in dwg.layers:
         split_layer_name = re.findall(key, layer.dxf.name, re.IGNORECASE)
@@ -178,11 +180,11 @@ def layers2seq(fname, req_layer):
             col_idx = split_layer_name[0][2]
             seq_layer_dict[seq_idx][col_idx][layer.dxf.name]=[]
 
+    seq_layer_dict = OrderedDict(sorted(seq_layer_dict.items(), key = lambda x: x[0]))
+
     print('{:-^79}'.format('MODEL STRUCTURE'))
     for var in print_nested(seq_layer_dict, []):
         if var: print(var)
-
-    sorted_layer_list = sorted(layer_list, key = lambda tup: (tup[1], tup[2]))
 
     seq_list = []
     for seq_key in sorted(seq_layer_dict.keys()):
@@ -193,7 +195,6 @@ def layers2seq(fname, req_layer):
                 layer_list.append(layer)
             col_list.append(layer_list)
         seq_list.append(col_list)
-
     return seq_list, seq_layer_dict
 
 def print_setings(args):
@@ -227,18 +228,14 @@ def main(args):
     fname_dxf = args.input
     lname_dxf = args.layer
 
-    dec_acc = args.accuracy
-    n_arc = args.arc_seg_num
-    l_arc = args.arc_seg_len
-    path_dir = args.collection_dir
-    eq_sect = args.equivalence_knots
-    eq_sect_skip = args.skip_eq_sections
-    z_coord = args.z_coord
-    output_path = args.output_path
-
-    dxf_params = (dec_acc, n_arc, l_arc)
-
-    dxf = dxfgrabber.readfile(fname_dxf, {"assure_3d_coords": True})
+    # dec_acc = args.accuracy
+    # n_arc = args.arc_seg_num
+    # l_arc = args.arc_seg_len
+    # path_dir = args.collection_dir
+    # eq_sect = args.equivalence_knots
+    # eq_sect_skip = args.skip_eq_sections
+    # z_coord = args.z_coord
+    # output_path = args.output_path
 
     seq_list, seq_dict = layers2seq(fname_dxf, lname_dxf)
 
@@ -246,17 +243,45 @@ def main(args):
         ss=[]
         for seq in seq_list:
             pp =[]
-            for plane in seq:
-                # print(plane)
-                io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(dxf, plane, dxf_params)
+            for lname_dxf_list in seq:
+
+                io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(fname_dxf, lname_dxf_list)
                 pp.append([io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1])
+
             if len(pp)==1:
-                ss.append(pp*2)
+                pp1 = deepcopy(pp)
+                for dset in pp1:
+                    for k in dset[-1].keys():
+                        dset[-1][k]['radius'] = np.array([0,0,1])
+
+                ss.append([pp[0], pp1[0]])
             else:
                 ss.append(pp)
+                print('pp len',len(pp))
 
-        # cncfclib.plot_path1(ss)
+#test of the alternative solution for dxf data collection
+        for k1, v1 in seq_dict.items():
+            for k2, v2 in v1.items():
+                for layer in v2.keys():
+                    seq_dict[k1][k2] = cncfclib.extract_dxf_layer_data(fname_dxf, layer)
+
+        # for k1, v1 in seq_dict.items():
+        #     for k2, v2 in v1.items():
+        #         print(k1, k2)
+                # seq_dict[k1][k2] = cncfclib.extract_dxf_path(fname_dxf, v2.keys())
+            # if len(pp)==1:
+            #     ss.append(pp*2)
+            # else:
+            #     ss.append(pp)
+
+        # print(ss)
+        cncfclib.plot_path1(ss)
         gcodelib.print_gcode(ss)
+
+
+
+
+
     else:
         print('No layers matching the pattern. Layer list is empty')
 
@@ -266,9 +291,9 @@ if __name__ == '__main__':
     #*********************************************************************DEFAULT PARAMETERS
     dflt_dxf_list = 'all'
     dflt_dec_acc = 4  # decimal accuracy
-    dflt_n_arc = 10  # number of segments
+    dflt_n_arc = 10   # number of segments
     dflt_l_arc = 0.1  # minimal segment length
-    dflt_path_dir = 1  # closed path collecting direction
+    dflt_path_dir = 1 # closed path collecting direction
     #*********************************************************************PROGRAM
 
     parser = argparse.ArgumentParser(description='test')

@@ -1,7 +1,9 @@
+#!/usr/bin/python3
 import sys
 import os
 import numpy as np
 from stl import mesh
+import dxfgrabber
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -862,8 +864,8 @@ def normv(v):
     return v/np.linalg.norm(v)
 
 def proj_vector2plane(u, n, y_dir = np.array([0,0,1])):
-    '''vector to plane projection.\n
-    input: u - vector, n - plane normal, O - attachement point\n
+    '''vector to plane projection.
+    input: u - vector, n - plane normal, O - attachement point
     ref. https://www.maplesoft.com/support/help/maple/view.aspx?path=MathApps%2FProjectionOfVectorOntoPlane'''
 
     nn = normv(n)
@@ -1147,16 +1149,7 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     glob_prop_dict= {}
     prop_dict = collections.defaultdict(dict)
 
-
-    # global_params = extract_params(dxf, 'props')
-    # print('global params')
-    # print(global_params)
-
     global_params = extract_global_params(dxf, 'glob_props')
-    # for var in global_params:
-    #     print(var)
-
-    # print(layer_name)
 
     for p, layer in enumerate(layer_name):
 
@@ -1274,21 +1267,19 @@ def data_fix(data):
     # print(data[-1])
     return 0
 
-def extract_dxf_path(dxf, layer_list, dxf_params):
-    dec_acc, n_arc, l_arc = dxf_params
-    # print('start extract dxf')
-    # print('LAYER_LIST',layer_list)
-    struct_data, prop_data, prop_dict, glob_params = dxf_read_1(dxf, layer_list, dec_acc, n_arc, l_arc)
-    # print('done - extract dxf')
-    start_coord_arr, cut_dir_marker, cut_dir, split = glob_params
-    # print('glob_parameters')
-    # print(start_coord_arr)
+def extract_dxf_layer_data(fname_dxf, layer, dec_acc=4, n_arc=10, l_arc=0.1):
+    dxf = dxfgrabber.readfile(fname_dxf, {"assure_3d_coords": True})
+    geom, prop, prop_dict, glob_params = dxf_read_1(dxf, [layer], dec_acc, n_arc, l_arc)
+    return {'geom':geom, 'prop':prop, 'prop_dict':prop_dict, 'glob_params':glob_params}
 
+
+def extract_dxf_path(fname_dxf, layer_list, dec_acc=4, n_arc=10, l_arc=0.1):
+    dxf = dxfgrabber.readfile(fname_dxf, {"assure_3d_coords": True})
+    struct_data, prop_data, prop_dict, glob_params = dxf_read_1(dxf, layer_list, dec_acc, n_arc, l_arc)
+    start_coord_arr, cut_dir_marker, cut_dir, split = glob_params
     io_path, io_rest, io_path_prop, io_rest_prop = find_io_path(struct_data, prop_data, start_coord_arr, prop_dict = prop_dict)
-    # print('found path')
     pt0 = io_path[-1,-1]
-    # print(pt0)
-    # print(io_rest)
+
     if io_rest:
         lo_path, lo_rest, lo_path_prop, lo_rest_prop = find_lo_path(io_rest, io_rest_prop, pt0, cut_dir = cut_dir, cut_dir_marker = cut_dir_marker, prop_dict = prop_dict)
     else:
@@ -1296,10 +1287,6 @@ def extract_dxf_path(dxf, layer_list, dxf_params):
         lo_rest =  np.array([])
         lo_path_prop =np.array([])
         lo_rest_prop =np.array([])
-
-    # print('iopath', io_path.shape)
-    # print('iorest', io_rest.shape)
-    # print('lopath',lo_path.shape)
 
     return io_path, lo_path, io_path_prop, lo_path_prop, prop_dict
 
@@ -1347,6 +1334,67 @@ def plot_path(path_list, prop_list, pd_list):
         #
         plt.grid(True)
         plt.show()
+def make_path_chain(io,lo):
+    return np.vstack((io[:,0,:],    io[-1,1,:],
+                      lo[:,0,:],    lo[-1,1,:],
+                      io[::-1,1,:], io[0,0,:]))
+
+def make_prop_chain(io, lo):
+    return np.hstack((io, io[-1], lo, lo[-1]))
+
+
+def make_path_chain_single(io):
+    return np.vstack((io[:,0,:],    io[-1,1,:]))
+
+def make_prop_chain_single(io):
+    return np.hstack((io, io[-1]))
+
+def make_projection(chain1, chain2, chain1_prop, chain2_prop, prop_dict1, prop_dict2, ret_full = False):
+    offset_list1 = []
+    offset_list2 = []
+    radius_list1 = []
+    radius_list2 = []
+    # print(prop_dict1)
+    for pr1, pr2 in zip(chain1_prop, chain2_prop):
+
+        # print(prop_dict1[pr1]['ref_coord'])
+        offset_list1.append(prop_dict1[pr1]['ref_coord'])
+        offset_list2.append(prop_dict2[pr2]['ref_coord'])
+        radius_list1.append(prop_dict1[pr1]['radius'])
+        radius_list2.append(prop_dict2[pr2]['radius'])
+
+    # print(chain2_prop)
+    # print(np.array(offset_list1))
+    ch1 = chain1 - np.array(offset_list1) + np.array(radius_list1)
+    ch2 = chain2 - np.array(offset_list2) + np.array(radius_list2)
+
+    proj_ch1 = []
+    proj_ch2 = []
+    for var1, var2 in zip(ch1, ch2):
+        # print(var2-var1)
+        proj_ch1.append(line_plane_intersect(var2, var1, np.array([0,0,-310]), np.array([0,0,1])))
+        proj_ch2.append(line_plane_intersect(var2, var1, np.array([0,0, 310]), np.array([0,0,1])))
+        # proj_ch2 = cncfclib.proj_vector2plane(, n, y_dir = np.array([0,0,1])):
+
+    print('ch1',ch1[-1])
+    proj_ch1_arr = np.array(proj_ch1)
+    print('proj',proj_ch1_arr[-1])
+
+
+    print('ch2',ch2[-1])
+    proj_ch2_arr = np.array(proj_ch2)
+    print('proj',proj_ch2_arr[-1])
+
+    if ret_full:
+        return proj_ch1_arr, proj_ch2_arr
+    else:
+        return proj_ch1_arr[:,:2], proj_ch2_arr[:,:2]
+
+def transform_chain(chain, pd1):
+    chain_tr = []
+    for pt in chain:
+        chain_tr.append(transform_pt(pt,ref_coord = pd1['ref_coord'], r=pd1['radius'], angle=pd1['angle']))
+    return np.array(chain_tr)
 
 def plot_path1(ss):
     color_list = ['red', 'green', 'blue', 'yellow']
@@ -1355,6 +1403,47 @@ def plot_path1(ss):
     fig = plt.figure()
     ax = fig.gca(projection='3d')
 
+### quick fix to get projections
+###
+###
+    for i, var1 in enumerate(ss):
+        # print('VAR ',var1)
+        if var1:
+            io_path1, lo_path1, io_prop1, lo_prop1, prop_dict1 = var1[0]
+            io_path2, lo_path2, io_prop2, lo_prop2, prop_dict2 = var1[1]
+
+            # gcode.append('{0[0]}layers: {1[0]} {1[1]}{0[1]}'.format(gcode_conf['comment'],[prop_dict1[0]['layer'], prop_dict2[0]['layer']]))
+            # gcode.append('{0[0]}sequence :{1}{0[1]}'.format(gcode_conf['comment'],i))
+
+            if lo_path1 and lo_path2:
+                chain1_path = make_path_chain(io_path1, lo_path1)
+                chain2_path = make_path_chain(io_path2, lo_path2)
+                chain1_prop = make_prop_chain(io_prop1, lo_prop1)
+                chain2_prop = make_prop_chain(io_prop2, lo_prop2)
+            else:
+                chain1_path = make_path_chain_single(io_path1)
+                chain2_path = make_path_chain_single(io_path2)
+                chain1_prop = make_prop_chain_single(io_prop1)
+                chain2_prop = make_prop_chain_single(io_prop2)
+
+            p1tproj, p2tproj = make_projection(chain1_path, chain2_path, chain1_prop, chain2_prop, prop_dict1, prop_dict2, ret_full = True)
+            pd1 = prop_dict1[0]
+            pd2 = prop_dict2[0]
+            print(pd1)
+            p1tproj = transform_chain(p1tproj, pd1)#ref_coord = pd1['ref_coord'], r=pd1['radius'], angle=pd1['angle'])
+            p2tproj = transform_chain(p2tproj, pd2)#ref_coord = pd2['ref_coord'], r=pd2['radius'], angle=pd2['angle'])
+            ax.plot(p1tproj[:,0],p1tproj[:,1],p1tproj[:,2], color='k')
+            ax.plot(p2tproj[:,0],p2tproj[:,1],p2tproj[:,2], color='k')
+            # ax.quiver(p1tproj[0], p1tproj[1], p1tproj[2],
+            #         p2tproj[0]-p1tproj[0], p2tproj[1]-p1tproj[1], p2tproj[2]-p1tproj[2], color='k', arrow_length_ratio=0)
+###
+###
+###
+
+
+
+
+
     for seq in ss:
         # print(seq)
         for pp in seq:
@@ -1362,16 +1451,19 @@ def plot_path1(ss):
             # print(pp)
             # for plane_pp in pp:
             io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = pp
-
             for path, prop in [(io_path1, io_path_prop1), (lo_path1, lo_path_prop1)]:
+
                 for i in np.arange(path.shape[0]):
                     p1 = path[i][0]
                     p2 = path[i][1]
+
+                    # p1_proj, p2_proj = cncfclib.make_projection(chain1_path, chain2_path, chain1_prop, chain2_prop, prop_dict1, prop_dict2)
+
                     prop_n = prop[i]
 
                     pd = prop_dict1[prop_n]
                     c = color_list[prop_n]
-                    # print('            DDDDDD',pd)
+
                     p1t = transform_pt(p1,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
                     p2t = transform_pt(p2,ref_coord = pd['ref_coord'], r=pd['radius'], angle=pd['angle'])
                     # if p1t[2] < 0  or p2t[2] <0:
@@ -1537,15 +1629,11 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
     '''
 
     knots_arr = arr.reshape(-1,3)
-    # print('TTT')
-    # print(knots_arr)
 
     unique_knots, counts = np.unique(knots_arr, return_counts=True, axis=0)
 
     unique_knots_1 = unique_knots[np.where(counts == 1)[0]]
     unique_knots_3 = unique_knots[np.where(counts >= 3)[0]]
-
-
 
     if start_pt.size:
         IO_knot_d, IO_knot_i = find_nearest(unique_knots_1, start_pt)
@@ -1555,17 +1643,9 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
         IO_knot = unique_knots_1
         stop_knot = unique_knots_3[0]
 
-    # print('io knot',IO_knot[0])
-    # print('IO knot: ',IO_knot)
-    # print('IO knot: ',IO_knot)
-    # print(prop_data)
-    # print('stop knot:', stop_knot)
     sol, rest, sol_prop, rest_prop = sort_segments(arr, IO_knot[0], stop_pt=stop_knot, prop_data = prop_data)
-    # print('prop dict',prop_dict)
+
     if prop_dict:
-        # print('prop_dict')
-        # print(prop_dict)
-        # # print('lvl1')
         for p in set(sol_prop):
             if prop_dict[p]['split']:
                 sol_list = []
@@ -1585,9 +1665,6 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
                 for k, b in groupby(enumerate(q_idxs.tolist()), lambda ix: ix[0]-ix[1]):
                     ranges_to_save = list(map(itemgetter(1), b))
                     ranges_to_save_list.append(ranges_to_save)
-
-                # print(ranges_to_split_list)
-                # print(ranges_to_save_list)
 
                 A = ranges_to_split_list
                 B = ranges_to_save_list
@@ -1637,22 +1714,9 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
                             sol_list.append(sol[B[-1]])
                             prop_list.append(sol_prop[B[-1]])
 
-
-                # print(sol_list)
                 sol = np.concatenate(sol_list, axis=0)
-                # print(sol)
                 sol_prop = np.hstack(prop_list)
-                # print(sol_prop)
 
-                            # ranges_to_save_list[-1]
-
-                        #start with split
-
-                        #start with save
-                # make_split(sol[ranges])
-                # print(continous_ranges_list)
-
-    # print('finale sol', sol)
     return sol, rest, sol_prop, rest_prop
 
 
@@ -1890,18 +1954,8 @@ def cw_order(seg1, seg2):
 #
 if __name__ == '__main__':
 
-    # cross_point(P1, P2, Q1, Q2)
     test_data = np.array([[[-1, -4, 0],[-1, -4, 1], [-2, -2, 2], [-1, -1, 3]],
                           [[4, -1, 0],[4, -1, 1], [2, -1, 2], [1, 0, 3]],
                           [[-2, 2, 0],[-2, 2, 1], [0, 3, 2], [0, 1, 3]]])
-    # test_data = np.array([[[-2, -2, 2], [-1, -1, 3]],
-    #                       [[2, -1, 2], [1, 0, 3]],
-    #                       [[0, 3, 2], [0, 1, 3]]])
-    # print(test_data)
 
     buff_2ang, buff_2R, buff_2PS, buff_2v = transform(test_data, add_pedestal_bottom=True)
-
-    # print('ang', buff_2ang)
-    # print('buf2', buff_2R)
-    # print('z', buff_2PS)
-    # print('2v', buff_2v  )
