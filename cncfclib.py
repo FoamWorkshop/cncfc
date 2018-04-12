@@ -1434,8 +1434,6 @@ def plot_path1(ss):
             p2tproj = transform_chain(p2tproj, pd2)#ref_coord = pd2['ref_coord'], r=pd2['radius'], angle=pd2['angle'])
             ax.plot(p1tproj[:,0],p1tproj[:,1],p1tproj[:,2], color='k')
             ax.plot(p2tproj[:,0],p2tproj[:,1],p2tproj[:,2], color='k')
-            # ax.quiver(p1tproj[0], p1tproj[1], p1tproj[2],
-            #         p2tproj[0]-p1tproj[0], p2tproj[1]-p1tproj[1], p2tproj[2]-p1tproj[2], color='k', arrow_length_ratio=0)
 ###
 ###
 ###
@@ -1951,6 +1949,12 @@ def cw_order(seg1, seg2):
     else:
         return True
 
+class layer():
+    def __init__(self, dxf, lname):
+        self.lname = lname
+        self.dxf = dxf
+    def MakeChain():
+        print('MakeChain')
 #
 if __name__ == '__main__':
 
