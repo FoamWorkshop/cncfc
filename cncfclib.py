@@ -4,6 +4,8 @@ import os
 import numpy as np
 from stl import mesh
 import dxfgrabber
+import ezdxf
+import pprint as pp
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -1087,18 +1089,21 @@ def extract_global_params(dxf, layer):
 def extract_params(dxf, layer):
     glob_prop_dict=collections.defaultdict(dict)
     forced_key=None
+
     for shape in dxf.entities:
+
         if layer in shape.layer and shape.dxftype == 'MTEXT':
+
             glob_prop_dict={'feed':200,
-            'ref_coord':np.zeros(3),
-            'power':0,
-            'angle':0,
-            'radius':np.zeros(3),
-            'layer':layer,
-            'split':None}
+                            'ref_coord':np.zeros(3),
+                            'power':0,
+                            'angle':0,
+                            'radius':np.zeros(3),
+                            'layer':layer,
+                            'split':None}
 
             porp_str = shape.raw_text
-            # print('--------------------------,forced_key)
+
             d_feed =  re.findall('feed *= *([.0-9]+)', porp_str)
             d_power = re.findall('power *= *([.0-9]+)', porp_str)
             d_angle = re.findall('angle *= *([-.0-9]+)', porp_str)
@@ -1106,12 +1111,7 @@ def extract_params(dxf, layer):
             d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*', porp_str)
             d_split =re.findall('split.*=.*([0-9]+).*', porp_str)
             d_coord =re.findall('.*coord_0.*', porp_str)
-            # local_params = extract_params_from_string(shape.raw_text)
-            #
-            # d_coord =re.findall('.*coord_0.*', shape.raw_text)
-            # if d_coord:   local_params.update({'ref_coord': [x for x in shape.insert]})
-            # local_params.update({'layer': layer})
-            # print('asdassadadasd',layer)
+
             glob_prop_dict['layer']=layer
             d_key =  re.findall('.*\[(\w+)\].*', shape.raw_text)
             if d_feed:  glob_prop_dict['feed']     = np.float(d_feed[0])
@@ -1219,6 +1219,93 @@ def dxf_read_1(dxf, layer_name, dec_acc, n_arc, l_arc):
     start_coord_arr = np.array(start_coord)
 
     return (element_arr, prop_arr, prop_dict, (start_coord_arr, cut_dir_marker, cut_dir, split))
+
+def dxf_read_2(dxf_name, lname):
+
+    seg_dt = np.dtype([('seg', float, (2,3)), ('prp', int, 1)])
+
+    dwg = ezdxf.readfile(dxf_name)
+    modelspace = dwg.modelspace()
+
+    lines = modelspace.query('LINE[layer=="{}"]'.format(lname))
+    arcs = modelspace.query('ARC[layer=="{}"]'.format(lname))
+    mtext = modelspace.query('MTEXT[layer=="{}"]'.format(lname))
+
+    seg_lin = np.stack([np.array([ ( np.round(( line.dxf.start, line.dxf.end ),4),hash(lname))], dtype = seg_dt) for line in lines], axis = 0)
+    # print(seg_lin)
+
+    return seg_lin
+    # print(np.vstack(seg_lin))
+    # for p, layer in enumerate(layer_name):
+    #
+    #     # local_params, forced_key = extract_params(dxf, layer)
+    #
+    #     # if local_params:
+    #     #     prop_dict[p] = local_params
+    #     # else:
+    #     #     default_params={'feed':200,
+    #     #     'ref_coord':np.zeros(3),
+    #     #     'power':0,
+    #     #     'angle':0,
+    #     #     'radius':np.zeros(3),
+    #     #     'layer':layer,
+    #     #     'split':None}
+    #     #
+    #     #     prop_dict[p] = default_params
+    #
+    #     for shape in dxf.entities:
+    #
+    #         if shape.layer == layer:
+    #
+    #             # if shape.dxftype == 'MTEXT':
+    #             #     if 'start'in shape.raw_text:
+    #             #         # print('found start')
+    #             #         start_coord = tuple(round(x, tol) for x in shape.insert)
+    #
+    #             if shape.dxftype == 'LINE':
+    #                 line_count += 1
+    #                 p1 = tuple(round(x, tol) for x in shape.start)
+    #                 p2 = tuple(round(x, tol) for x in shape.end)
+    #                 if p1!=p2:
+    #                     knots_list.append(p1)
+    #                     knots_list.append(p2)
+    #                     elements_list.append([p1, p2])
+    #                     prop_list.append(p)
+    #
+    #                     if shape.dxftype == 'ARC':
+    #                         arc_count += 1
+    #                         ARC_knots_list = []
+    #                         n = n_arc  # number of segments
+    #                         min_len = l_arc
+    #                         O = shape.center
+    #                         R = shape.radius
+    #                         angl_1 = shape.start_angle * np.pi / 180
+    #                         angl_2 = shape.end_angle * np.pi / 180
+    #
+    #                         if angl_2 >= angl_1:
+    #                             angl_list = np.linspace(angl_1, angl_2, n)
+    #                         else:
+    #                             angl_list = np.linspace(angl_1, angl_2 + 2 * np.pi, n)
+    #
+    #                             arc_len = R * np.absolute(angl_2 - angl_1)
+    #
+    #                             if arc_len / n < min_len:
+    #                                 n = max(int(arc_len / min_len), 3)
+    #
+    #                                 for angl in angl_list:
+    #                                     ARC_knots_list.append(
+    #                                     (round(O[0] + R * np.cos(angl), tol), round(O[1] + R * np.sin(angl), tol), O[2]))
+    #
+    #                                     for i in range(n - 1):
+    #                                         elements_list.append(ARC_knots_list[i:i + 2])
+    #                                         prop_list.append(p)
+    #
+    #                                         element_arr=np.array(elements_list)
+    #                                         prop_arr=np.array(prop_list)
+    #                                         start_coord_arr = np.array(start_coord)
+    # return (element_arr, prop_arr, prop_dict, (start_coord_arr, cut_dir_marker, cut_dir, split))
+
+
 
 def find_segment1(data, pt):
     sol_idx = np.array([])
@@ -1718,9 +1805,6 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
     return sol, rest, sol_prop, rest_prop
 
 
-
-
-
 def find_lo_path(arr, prop_data, start_pt, return_idx=False, close_loop = True, cut_dir = 'ccw', cut_dir_marker = np.array([]), prop_dict={}):
     dir_dict={'ccw':1, 'cw':-1}
     # print(arr)
@@ -1848,6 +1932,7 @@ def ct_len(io_path, sorted_knots):
     coord_arr=np.array(coord_list)
     l_arr = np.linalg.norm(np.diff(coord_arr,axis=0), axis=1)
     return np.sum(l_arr)
+
 def knots2file_1(name, section_list):
     f = open(name, 'w')
     # print('TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT')
@@ -1920,6 +2005,48 @@ def find_path(crit, el_kt_list, sorted_knots, excl_knot):
     # print '\n'
     return path
 
+def extract_params(dxf, layer):
+    glob_prop_dict=collections.defaultdict(dict)
+    forced_key=None
+
+    for shape in dxf.entities:
+
+        if layer in shape.layer and shape.dxftype == 'MTEXT':
+
+            glob_prop_dict={'feed':200,
+                            'ref_coord':np.zeros(3),
+                            'power':0,
+                            'angle':0,
+                            'radius':np.zeros(3),
+                            'layer':layer,
+                            'split':None}
+
+            porp_str = shape.raw_text
+
+            d_feed =  re.findall('feed *= *([.0-9]+)', porp_str)
+            d_power = re.findall('power *= *([.0-9]+)', porp_str)
+            d_angle = re.findall('angle *= *([-.0-9]+)', porp_str)
+            d_radius =re.findall('radius *= *([-.0-9]+)', porp_str)
+            d_cut_dir =re.findall('cut_dir.*=.*(c?cw).*', porp_str)
+            d_split =re.findall('split.*=.*([0-9]+).*', porp_str)
+            d_coord =re.findall('.*coord_0.*', porp_str)
+
+            glob_prop_dict['layer']=layer
+            d_key =  re.findall('.*\[(\w+)\].*', shape.raw_text)
+            if d_feed:  glob_prop_dict['feed']     = np.float(d_feed[0])
+            if d_power: glob_prop_dict['power']    = np.float(d_power[0])
+            if d_angle: glob_prop_dict['angle']    = np.float(d_angle[0])
+            if d_split: glob_prop_dict['split']    = np.int(d_split[0])
+            if d_radius:glob_prop_dict['radius'   ]= np.array([0,0,np.float(d_radius[0])])
+            if d_cut_dir: glob_prop_dict['cut_dir']= d_cut_dir
+            if d_coord: glob_prop_dict['ref_coord'] = [x for x in shape.insert]
+
+            if d_key:
+                forced_key = d_key[0]
+
+    return glob_prop_dict, forced_key
+
+
 
 def find_l_el(read_dir, el_kt_list, sorted_knots, master_knot):
     # find all elements including master_knot and put into el_index list
@@ -1949,11 +2076,86 @@ def cw_order(seg1, seg2):
     else:
         return True
 
-class layer():
-    def __init__(self, dxf, lname):
-        self.lname = lname
-        self.dxf = dxf
-    def MakeChain():
+
+class chain():
+
+
+    def __init__(self, fname_dxf):
+        '''arr_sgm - segments array [[[x,y,z],[x1,y1,z1]]...]
+           arr_prp - properties vector [l0, l0, ... l1]
+           dct_prp - properties dictionary {l0:{...}, l1:{...}'''
+
+        seg_dt = np.dtype([('seg', float, (2,3)), ('prp', int, 1)])
+
+        self.seg_dt = seg_dt
+        self.dwg = ezdxf.readfile(fname_dxf)
+        self.seg_arr = np.array([], dtype = seg_dt)
+        self.prp_dict = collections.OrderedDict({})
+        # print('init')
+
+    def extract_params_1(self, mtext):
+        prp_dict={'feed':200,
+                      'ref_coord':np.zeros(3),
+                      'power':0,
+                      'angle':0,
+                      'radius':np.zeros(3),
+                      'cut_dir':'cw',
+                      # 'layer':layer,
+                      'split':None}
+
+        for text_obj in mtext:
+            text = text_obj.get_text()
+
+            d_feed    = re.findall('feed\s*=\s*([\.\d]+)', text)
+            d_power   = re.findall('power\s*=\s*([\.\d]+)', text)
+            d_angle   = re.findall('angle\s*=\s*([\-\.\d]+)', text)
+            d_radius  = re.findall('radius\s*=\s*([\-\.\d]+)', text)
+            d_cut_dir = re.findall('cut_dir.*=.*(c?cw).*', text)
+            d_split   = re.findall('split.*=.*([\d]+).*', text)
+            d_coord   = re.findall('.*coord_0.*', text, re.IGNORECASE)
+
+            if d_feed:    prp_dict['feed']     = np.float(d_feed[0])
+            if d_power:   prp_dict['power']    = np.float(d_power[0])
+            if d_angle:   prp_dict['angle']    = np.float(d_angle[0])
+            if d_split:   prp_dict['split']    = np.int(d_split[0])
+            if d_radius:  prp_dict['radius']   = np.array([0,0,np.float(d_radius[0])])
+            if d_cut_dir: prp_dict['cut_dir']  = d_cut_dir
+            if d_coord:
+                print('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxxxx')
+                prp_dict['ref_coord']= np.array(text_obj.get_dxf_attrib('insert'))
+
+        return prp_dict
+
+    def AddSeg( self, lname):
+        prp_idx = hash(lname)
+
+        modelspace = self.dwg.modelspace()
+        lines = modelspace.query('LINE[layer=="{}"]'.format(lname))
+        arcs = modelspace.query('ARC[layer=="{}"]'.format(lname))
+        mtext = modelspace.query('MTEXT[layer=="{}"]'.format(lname))
+        seg_lin = np.stack([np.array([ ( np.round(( line.dxf.start, line.dxf.end ),4),prp_idx)], dtype = self.seg_dt) for line in lines], axis = 0)
+
+        self.seg_arr = np.append(self.seg_arr, seg_lin)
+        self.prp_dict.update({prp_idx: self.extract_params_1(mtext)})
+
+    def PrintList(self):
+        pp.pprint( np.vstack(self.seg_arr) )
+        pp.pprint( self.prp_dict )
+        # print(dxf_read_2(self.dwg, lname))
+
+    def ApplyTransformations(self):
+        #apply coord transform
+        main_key = list(self.prp_dict.keys())[0]
+        coord_0 = self.prp_dict[main_key]['ref_coord']
+        self.seg_arr['seg'] -= coord_0
+        #apply splits
+        for key in self.prp_dict.keys():
+            if self.prp_dict[key]['split']:
+                print('split not implemented yet')
+
+        print(self.seg_arr)
+
+    def MakeChain(self):
         print('MakeChain')
 #
 if __name__ == '__main__':

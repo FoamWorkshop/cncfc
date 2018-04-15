@@ -236,7 +236,7 @@ def main(args):
     # eq_sect_skip = args.skip_eq_sections
     # z_coord = args.z_coord
     # output_path = args.output_path
-
+    s1 = cncfclib.chain(fname_dxf)
     seq_list, seq_dict = layers2seq(fname_dxf, lname_dxf)
 
     if seq_list:
@@ -244,7 +244,9 @@ def main(args):
         for seq in seq_list:
             pp =[]
             for lname_dxf_list in seq:
-
+                for ln in lname_dxf_list:
+                    s1.AddSeg(lname_dxf_list[0])
+                cncfclib.dxf_read_2(fname_dxf, lname_dxf_list[0])
                 io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(fname_dxf, lname_dxf_list)
                 pp.append([io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1])
 
@@ -258,7 +260,9 @@ def main(args):
             else:
                 ss.append(pp)
                 print('pp len',len(pp))
-
+        s1.PrintList()
+        s1.ApplyTransformations()
+        s1.MakeChain
 #test of the alternative solution for dxf data collection
         for k1, v1 in seq_dict.items():
             for k2, v2 in v1.items():
@@ -275,7 +279,7 @@ def main(args):
             #     ss.append(pp)
 
         # print(ss)
-        cncfclib.plot_path1(ss)
+        # cncfclib.plot_path1(ss)
         gcodelib.print_gcode(ss)
 
 
