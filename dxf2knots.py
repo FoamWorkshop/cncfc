@@ -104,6 +104,7 @@ import ezdxf
 from collections import defaultdict
 from collections import OrderedDict
 from copy import deepcopy
+from cncfc_obj import chain
 
 def nested_dict():
     return defaultdict(nested_dict)
@@ -244,8 +245,9 @@ def main(args):
         for seq in seq_list:
             pp =[]
             for lname_dxf_list in seq:
-                for ln in lname_dxf_list:
-                    s1.AddSeg(lname_dxf_list[0])
+                # for ln in lname_dxf_list:
+                #     s1.AddSeg(lname_dxf_list[0])
+
                 cncfclib.dxf_read_2(fname_dxf, lname_dxf_list[0])
                 io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(fname_dxf, lname_dxf_list)
                 pp.append([io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1])
@@ -260,14 +262,17 @@ def main(args):
             else:
                 ss.append(pp)
                 print('pp len',len(pp))
-        s1.PrintList()
-        s1.ApplyTransformations()
-        s1.MakeChain
+
+    # if seq_list:
+    #     ss=[]
+    #     for seq in seq_list:
+    #         pp =[]
+    # for lname_dxf_list in seq_list[-1]:
 #test of the alternative solution for dxf data collection
-        for k1, v1 in seq_dict.items():
-            for k2, v2 in v1.items():
-                for layer in v2.keys():
-                    seq_dict[k1][k2] = cncfclib.extract_dxf_layer_data(fname_dxf, layer)
+        # for k1, v1 in seq_dict.items():
+        #     for k2, v2 in v1.items():
+        #         for layer in v2.keys():
+        #             seq_dict[k1][k2] = cncfclib.extract_dxf_layer_data(fname_dxf, layer)
 
         # for k1, v1 in seq_dict.items():
         #     for k2, v2 in v1.items():
@@ -282,14 +287,23 @@ def main(args):
         # cncfclib.plot_path1(ss)
         gcodelib.print_gcode(ss)
 
-
-
-
-
     else:
         print('No layers matching the pattern. Layer list is empty')
 
     print('\nDone. Thank you!')
+    s1 = cncfclib.chain(fname_dxf)
+    # s1.AddSeg('test')
+    lname_dxf_list = seq_list[-1]
+    print(lname_dxf_list)
+
+    for ln in lname_dxf_list[1]:
+        print(ln)
+        s1.AddSeg(ln)
+
+    s1.PrintList()
+    s1.ApplyTransformations()
+    s1.MakeChain()
+    s1.PlotChain()
 
 if __name__ == '__main__':
     #*********************************************************************DEFAULT PARAMETERS

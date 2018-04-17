@@ -16,6 +16,7 @@ from itertools import groupby
 from operator import itemgetter
 import collections
 import re
+from copy import deepcopy
 # def flatten(items):
 #     """Yield items from any nested iterable; see REF."""
 #     for x in items:
@@ -1661,6 +1662,76 @@ def sort_segments(arr, start_pt, stop_pt=np.array([]), close_loop = False, retur
 
     return sol
 
+def sort_segments1(seg_arr, start_pt, stop_pt=np.array([]), close_loop = False, return_idx=False, prop_data=np.array([])):
+    '''Make a /chain sorting/ of segments defined in the arr. The starting point is definied by start_pt. If there is no exact pt matching, the function uses the nearest end pt
+    PARAMETERS:
+        arr = np.array( nx2x3 ) ex: [[[x,y,z],[x1,y1,z1]],[[x2,y2,y3],[x1,y1,z1]],...]
+        start_pt = np.array([x,y,z]) - vector
+        stop_pt = np.array([x,y,z]) - vector, default empty.
+        close_loop = False|True, default False.
+        return_idx = False|True, default False. If True the function returns seorted indices of arr
+    RETURNS:
+        sol - sorted segments
+        rest - remaining segments. in general subtract sol from arr
+    '''
+    def FlipSeg(seg_arr):
+        seg_arr['seg']=seg_arr['seg'][::-1]
+        return seg_arr
+
+    rest=np.array([])
+    #split segments array to 2 columns
+    A_arr = seg_arr['seg'][:,0,:]
+    B_arr = seg_arr['seg'][:,1,:]
+    seg_arr_rest = deepcopy(seg_arr)
+    # C_arr = prop_data
+    #pt0 is a loop variable
+    pt0 = start_pt
+
+    # print(prop_data)
+
+    #make data storage buffers
+    sorted_arr = np.zeros_like(seg_arr)
+    # rest = np.array([[],[]])
+    # rest_prop = np.array([])
+
+    for i in np.arange( np.shape(seg_arr)[0]):
+        #find the nearest point to pt0
+        #return X_d - distance; X_i - position in the arr
+
+        A_d, A_i = find_nearest(A_arr, pt0)
+        B_d, B_i = find_nearest(B_arr, pt0)
+
+        #If a point in A_arr is closer to pt0
+        if A_d[0]<B_d[0]:
+            sorted_arr[i] = seg_arr[A_i[0]]
+            pt0 = B_arr[A_i[0]]
+            A_arr = np.delete(A_arr, A_i[0], axis = 0)
+            B_arr = np.delete(B_arr, A_i[0], axis = 0)
+        else:
+            sorted_arr[i]= FlipSeg(seg_arr[B_i[0]])
+            pt0 = A_arr[B_i[0]]
+            A_arr = np.delete(A_arr, B_i[0], axis = 0)
+            B_arr = np.delete(B_arr, B_i[0], axis = 0)
+
+        #if stop_pt within current segment then break
+        if np.array_equal(stop_pt, pt0):
+            rest = np.stack((A_arr,B_arr), axis=1)
+            rest_prop = C_arr
+            break
+    #close loop solution array modyfication
+    if close_loop:
+        sol_io = np.vstack((sorted_arr[:i+1],
+                        np.array([ [sorted_arr[-1,1,:], sorted_arr[0,0,:]] ])))
+
+    else:
+        sol_io = sorted_arr[:i+1]
+
+    sol = (sol_io, rest)
+
+    return sol
+
+
+
 def sort_loop(arr, start_pt, dir='cw'):
     idx = find3dpoint(arr, start_pt)
     # v1
@@ -1669,38 +1740,41 @@ def sort_loop(arr, start_pt, dir='cw'):
     return sol, rest
 
 def make_split(arr, props, splits):
-    # splits=5
-    # print('KKKKKKKKKKKK',arr)
     v = arr[:,1] - arr[:,0]
-    # print('splits',splits)
-    # print('v',v)
 
     l_norm = np.linalg.norm(v, axis=1)
     l_cs = np.hstack((0, np.cumsum(l_norm)))
-    # print(l_norm)
-    # print('cumsum',np.sum(l_norm))
-    # print('lcs',l_cs)
 
     n_seg = np.linspace(0,np.sum(l_norm),splits)
-    # print('nseg',n_seg)
-    #
-    # print('nseg',n_seg.shape, l_cs.shape, np.hstack((arr[:,0,0], arr[-1,1,0])).shape)
-    # print(np.hstack((arr[:,0,0], arr[-1,1,0])))
-    # print(np.hstack((arr[:,0,1], arr[-1,1,1])))
-    # print(np.hstack((arr[:,0,2], arr[-1,1,2])))
     x=np.interp(n_seg, l_cs, np.hstack((arr[:,0,0], arr[-1,1,0])))
     y=np.interp(n_seg, l_cs, np.hstack((arr[:,0,1], arr[-1,1,1])))
     z=np.interp(n_seg, l_cs, np.hstack((arr[:,0,2], arr[-1,1,2])))
-    #
-    # print(x)
-    # print(y)
-    # print(z)
+
     arr_buff0 = np.column_stack((x, y, z))
     arr_buff1= np.roll(arr_buff0, -1, axis=0)
     arr_buff  = np.stack((arr_buff0, arr_buff1),axis=1)[:-1]
     prop_buff = np.ones(arr_buff.shape[0], dtype=np.int) * props[0]
-    # print('arr_buff', arr_buff)
-    # print('prop_buff', prop_buff)
+
+    return arr_buff, prop_buff
+
+def MakeSplit(seg_arr, n, args={}):
+    #seg_arr - segments array
+    #n - number of new segments
+    v = arr[:,1] - arr[:,0]
+
+    l_norm = np.linalg.norm(v, axis=1)
+    l_cs = np.hstack((0, np.cumsum(l_norm)))
+
+    n_seg = np.linspace(0,np.sum(l_norm),splits)
+    x=np.interp(n_seg, l_cs, np.hstack((arr[:,0,0], arr[-1,1,0])))
+    y=np.interp(n_seg, l_cs, np.hstack((arr[:,0,1], arr[-1,1,1])))
+    z=np.interp(n_seg, l_cs, np.hstack((arr[:,0,2], arr[-1,1,2])))
+
+    arr_buff0 = np.column_stack((x, y, z))
+    arr_buff1= np.roll(arr_buff0, -1, axis=0)
+    arr_buff  = np.stack((arr_buff0, arr_buff1),axis=1)[:-1]
+    prop_buff = np.ones(arr_buff.shape[0], dtype=np.int) * props[0]
+
     return arr_buff, prop_buff
 
 def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_dict={}):
@@ -1803,6 +1877,46 @@ def find_io_path(arr, prop_data, start_pt=np.array([]), return_idx=False, prop_d
                 sol_prop = np.hstack(prop_list)
 
     return sol, rest, sol_prop, rest_prop
+
+def find_io_path1(arr, start_pt=np.zeros(3), prp_dict={}, return_idx=False, prop_dict={}):
+    '''finds open loop chain. the stop point is at T-junction or the free end
+        PARAMETERS:
+            arr = np.array( nx2x3 ) ex: [[[x,y,z],[x1,y1,z1]],[[x2,y2,y3],[x1,y1,z1]],...]
+            start_pt = np.array([x,y,z]) - vector
+        RETURNS:
+            sol - sorted segments
+            rest - remaining segments. in general subtract sol from arr
+    '''
+    print(prp_dict)
+    if prp_dict:
+        if 'start' in prp_dict.keys():
+
+            start = prp_dict[arr['prp'][0]]['start']
+
+    knots_arr = arr['seg'].reshape(-1,3)
+    # print(knots_arr)
+    unique_knots, counts = np.unique(knots_arr, return_counts=True, axis=0)
+
+    unique_knots_1 = unique_knots[np.where(counts == 1)[0]]
+    # print(unique_knots_1)
+    unique_knots_3 = unique_knots[np.where(counts >= 3)[0]]
+    # print('u knots 3',unique_knots_3)
+
+    if start_pt.size:
+        IO_knot_d, IO_knot_i = find_nearest(unique_knots_1, start_pt)
+        IO_knot = unique_knots_1[IO_knot_i]
+        stop_knot = np.array([])
+    else:
+        IO_knot = unique_knots_1
+        stop_knot = unique_knots_3[0]
+
+    sol, rest = sort_segments1(arr, start)
+
+    print(sol)
+
+    return sol, rest
+
+
 
 
 def find_lo_path(arr, prop_data, start_pt, return_idx=False, close_loop = True, cut_dir = 'ccw', cut_dir_marker = np.array([]), prop_dict={}):
@@ -2077,87 +2191,8 @@ def cw_order(seg1, seg2):
         return True
 
 
-class chain():
 
 
-    def __init__(self, fname_dxf):
-        '''arr_sgm - segments array [[[x,y,z],[x1,y1,z1]]...]
-           arr_prp - properties vector [l0, l0, ... l1]
-           dct_prp - properties dictionary {l0:{...}, l1:{...}'''
-
-        seg_dt = np.dtype([('seg', float, (2,3)), ('prp', int, 1)])
-
-        self.seg_dt = seg_dt
-        self.dwg = ezdxf.readfile(fname_dxf)
-        self.seg_arr = np.array([], dtype = seg_dt)
-        self.prp_dict = collections.OrderedDict({})
-        # print('init')
-
-    def extract_params_1(self, mtext):
-        prp_dict={'feed':200,
-                      'ref_coord':np.zeros(3),
-                      'power':0,
-                      'angle':0,
-                      'radius':np.zeros(3),
-                      'cut_dir':'cw',
-                      # 'layer':layer,
-                      'split':None}
-
-        for text_obj in mtext:
-            text = text_obj.get_text()
-
-            d_feed    = re.findall('feed\s*=\s*([\.\d]+)', text)
-            d_power   = re.findall('power\s*=\s*([\.\d]+)', text)
-            d_angle   = re.findall('angle\s*=\s*([\-\.\d]+)', text)
-            d_radius  = re.findall('radius\s*=\s*([\-\.\d]+)', text)
-            d_cut_dir = re.findall('cut_dir.*=.*(c?cw).*', text)
-            d_split   = re.findall('split.*=.*([\d]+).*', text)
-            d_coord   = re.findall('.*coord_0.*', text, re.IGNORECASE)
-
-            if d_feed:    prp_dict['feed']     = np.float(d_feed[0])
-            if d_power:   prp_dict['power']    = np.float(d_power[0])
-            if d_angle:   prp_dict['angle']    = np.float(d_angle[0])
-            if d_split:   prp_dict['split']    = np.int(d_split[0])
-            if d_radius:  prp_dict['radius']   = np.array([0,0,np.float(d_radius[0])])
-            if d_cut_dir: prp_dict['cut_dir']  = d_cut_dir
-            if d_coord:
-                print('XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXxxxx')
-                prp_dict['ref_coord']= np.array(text_obj.get_dxf_attrib('insert'))
-
-        return prp_dict
-
-    def AddSeg( self, lname):
-        prp_idx = hash(lname)
-
-        modelspace = self.dwg.modelspace()
-        lines = modelspace.query('LINE[layer=="{}"]'.format(lname))
-        arcs = modelspace.query('ARC[layer=="{}"]'.format(lname))
-        mtext = modelspace.query('MTEXT[layer=="{}"]'.format(lname))
-        seg_lin = np.stack([np.array([ ( np.round(( line.dxf.start, line.dxf.end ),4),prp_idx)], dtype = self.seg_dt) for line in lines], axis = 0)
-
-        self.seg_arr = np.append(self.seg_arr, seg_lin)
-        self.prp_dict.update({prp_idx: self.extract_params_1(mtext)})
-
-    def PrintList(self):
-        pp.pprint( np.vstack(self.seg_arr) )
-        pp.pprint( self.prp_dict )
-        # print(dxf_read_2(self.dwg, lname))
-
-    def ApplyTransformations(self):
-        #apply coord transform
-        main_key = list(self.prp_dict.keys())[0]
-        coord_0 = self.prp_dict[main_key]['ref_coord']
-        self.seg_arr['seg'] -= coord_0
-        #apply splits
-        for key in self.prp_dict.keys():
-            if self.prp_dict[key]['split']:
-                print('split not implemented yet')
-
-        print(self.seg_arr)
-
-    def MakeChain(self):
-        print('MakeChain')
-#
 if __name__ == '__main__':
 
     test_data = np.array([[[-1, -4, 0],[-1, -4, 1], [-2, -2, 2], [-1, -1, 3]],
