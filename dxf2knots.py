@@ -237,7 +237,7 @@ def main(args):
     # eq_sect_skip = args.skip_eq_sections
     # z_coord = args.z_coord
     # output_path = args.output_path
-    s1 = cncfclib.chain(fname_dxf)
+    # s1 = cncfclib.chain(fname_dxf)
     seq_list, seq_dict = layers2seq(fname_dxf, lname_dxf)
 
     if seq_list:
@@ -291,16 +291,16 @@ def main(args):
         print('No layers matching the pattern. Layer list is empty')
 
     print('\nDone. Thank you!')
-    s1 = cncfclib.chain(fname_dxf)
+    s1 = chain(fname_dxf)
     # s1.AddSeg('test')
-    lname_dxf_list = seq_list[-1]
+    lname_dxf_list = seq_list[0]
     print(lname_dxf_list)
 
-    for ln in lname_dxf_list[1]:
-        print(ln)
-        s1.AddSeg(ln)
+    # for ln in lname_dxf_list[0]:
+    #     print('seg ln',ln)
+    s1.AddSeg(lname_dxf_list[0][0])
 
-    s1.PrintList()
+    # s1.PrintList()
     s1.ApplyTransformations()
     s1.MakeChain()
     s1.PlotChain()
