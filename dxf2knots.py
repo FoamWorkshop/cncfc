@@ -104,7 +104,7 @@ import ezdxf
 from collections import defaultdict
 from collections import OrderedDict
 from copy import deepcopy
-from cncfc_obj import chain
+from cncfc_obj import chain, AxisProfile, ModelProfile, CuttingSpace
 
 def nested_dict():
     return defaultdict(nested_dict)
@@ -291,20 +291,53 @@ def main(args):
         print('No layers matching the pattern. Layer list is empty')
 
     print('\nDone. Thank you!')
-    s1 = chain(fname_dxf)
+
+#alternalive approach
+    # prof_list = seq_list
+    conf = {'Z_span': 400, 'RTable_loc': 200}
+    ct = CuttingSpace(conf)
+    md = ModelProfile()
+    for j,  seq_name in enumerate(seq_list):
+
+        ap = AxisProfile()
+
+        for i, axis_name in enumerate(seq_name):
+
+            s1 = chain(fname_dxf)
+
+            for prof_name in axis_name:
+
+                s1.AddSeg(prof_name)
+
+            s1.ApplyTransformations()
+            s1.MakeChain()
+            # s1.PlotChain()
+
+            ap.Add2Axis(i, s1)
+            # ap.Plot(mode='2D')
+        md.Add2Prof(j, ap)
+
+    # md.Plot(mode = '3D')
+    ct.Add2Cut(md)
+    ct.Plot(mode='3D')
     # s1.AddSeg('test')
-    lname_dxf_list = seq_list[0]
-    print(lname_dxf_list)
+    # lname_dxf_list = seq_list[0]
+    # print(seq_list)
+    # print(lname_dxf_list)
 
     # for ln in lname_dxf_list[0]:
-    #     print('seg ln',ln)
-    s1.AddSeg(lname_dxf_list[0][0])
+    # print('seg ln',ln)
 
-    # s1.PrintList()
-    s1.ApplyTransformations()
-    s1.MakeChain()
-    s1.PlotChain()
+    # print(ln[0][0])
+    # s1.AddSct(0)
+    # s1.AddSct(1)
+    # s1.AddSct(2)
+    # s1.AddSeg(ln[0][1])
+    # s1.AddSeg(ln[0][0])
 
+    # print(r1)
+    # for var in r1['seg']:
+    #     print(var)
 if __name__ == '__main__':
     #*********************************************************************DEFAULT PARAMETERS
     dflt_dxf_list = 'all'
