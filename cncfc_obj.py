@@ -322,11 +322,10 @@ class CuttingSpace():
 
     def transform_chain(self, chain, prp_arr, prp_dict):
         chain_tr = []
-        print(chain)
+
         for pt, idx in zip(chain, prp_arr):
             chain_tr.append(self.transform_pt(pt, angle=prp_dict[idx]['angle']))
-            # chain_tr.append(self.transform_pt(pt,ref_coord = prp_dict[idx]['ref_coord'], angle=prp_dict[idx]['angle']))
-            # chain_tr.append(self.transform_pt(pt,ref_coord = prp_dict[idx]['ref_coord'], angle=prp_dict[idx]['angle'], r=prp_dict[idx]['radius']))
+
         return np.array(chain_tr)
 
 
@@ -354,17 +353,15 @@ class CuttingSpace():
             P = L0 + d * l
         return P
 
-    def make_projection(self, chain1, chain2, p1):
+    def make_projection(self, ch1, ch2, p1, proj_dir):
 
         proj_ch1 = []
 
         for var1, var2 in zip(ch1, ch2):
-            proj_ch1.append(self.line_plane_intersect(var2, var1, np.array([0,0,-310]), np.array([0,0,1])))
+            print(var1, var2)
+            proj_ch1.append(self.line_plane_intersect(var2, var1, np.array([0,0,p1]), np.array([0,0, proj_dir])))
 
         return np.array(proj_ch1)
-
-
-
 
 
     def __init__(self, conf):
@@ -389,31 +386,47 @@ class CuttingSpace():
 
                 if len(ap.axis_profile.keys())==2:
 
+                    print(ap.axis_profile.keys())
+
                     s = ap.axis_profile
-                    chain_arr0 = self.SegArr2Poly(s.seg_sorted['seg'])
-                    chain_arr1 = self.SegArr2Poly(s.seg_sorted['seg'])
-                    prp_arr0 = np.hstack([s.seg_sorted['prp'],s.seg_sorted['prp'][-1]])
-                    prp_arr1 = np.hstack([s.seg_sorted['prp'],s.seg_sorted['prp'][-1]])
-                    poly_arr0 = self.transform_chain(chain_arr, prp_arr, s.prp_dict['loc'])
-                    poly_arr1 = self.transform_chain(chain_arr, prp_arr, s.prp_dict['loc'])
+                    # print(s)
+                    chain_arr0 = self.SegArr2Poly(s[0].seg_sorted['seg'])
+                    chain_arr1 = self.SegArr2Poly(s[1].seg_sorted['seg'])
+
+                    prp_arr0 = np.hstack([s[0].seg_sorted['prp'],s[0].seg_sorted['prp'][-1]])
+                    prp_arr1 = np.hstack([s[1].seg_sorted['prp'],s[1].seg_sorted['prp'][-1]])
+
+                    poly_arr0 = self.transform_chain(chain_arr0, prp_arr0, s[0].prp_dict['loc'])
+                    poly_arr1 = self.transform_chain(chain_arr1, prp_arr1, s[1].prp_dict['loc'])
+
+                    poly_arr0proj = self.make_projection(poly_arr0, poly_arr1, XYz, 1)
+                    poly_arr1proj = self.make_projection(poly_arr0, poly_arr1, UVz, 1)
 
                     x_arr0 = poly_arr0[:,0]
                     y_arr0 = poly_arr0[:,1]
                     z_arr0 = poly_arr0[:,2]
-
                     x_arr1 = poly_arr1[:,0]
                     y_arr1 = poly_arr1[:,1]
                     z_arr1 = poly_arr1[:,2]
 
+                    x_arr0proj = poly_arr0proj[:,0]
+                    y_arr0proj = poly_arr0proj[:,1]
+                    z_arr0proj = poly_arr0proj[:,2]
+                    x_arr1proj = poly_arr1proj[:,0]
+                    y_arr1proj = poly_arr1proj[:,1]
+                    z_arr1proj = poly_arr1proj[:,2]
+
                     ax.plot(x_arr0, y_arr0, z_arr0)
                     ax.plot(x_arr1, y_arr1, z_arr1)
 
+                    ax.plot(x_arr0proj, y_arr0proj, z_arr0proj, color='k')
+                    ax.plot(x_arr1proj, y_arr1proj, z_arr1proj, color='k')
 
                 else:
                     s = ap.axis_profile[0]
                     chain_arr = self.SegArr2Poly(s.seg_sorted['seg'])
-                    prp_arr = np.hstack([s.seg_sorted['prp'],s.seg_sorted['prp'][-1]])
-                    poly_arr = self.transform_chain(chain_arr, prp_arr, s.prp_dict['loc'])
+                    prp_arr0 = np.hstack([s.seg_sorted['prp'],s.seg_sorted['prp'][-1]])
+                    poly_arr = self.transform_chain(chain_arr, prp_arr0, s.prp_dict['loc'])
 
                     x_arr = poly_arr[:,0]
                     y_arr = poly_arr[:,1]
@@ -421,18 +434,158 @@ class CuttingSpace():
 
                     ax.plot(x_arr, y_arr, z_arr)
 
-                # for sec_num, s in ap.axis_profile.items():
-
-
             ax.plot(np.array([0,100]), np.zeros(2), np.full((2),XYz))
             ax.plot(np.array([0,100]), np.zeros(2), np.full((2),UVz))
             ax.plot(np.zeros(2), np.array([0,100]), np.full((2),XYz))
             ax.plot(np.zeros(2), np.array([0,100]), np.full((2),UVz))
-            # ax.plot(x_arr, y_arr, z_arr)
-            # ax.plot(x_arr, y_arr, z_arr)
-            # ax.plot(x_arr, y_arr, z_arr)
 
             ax.set_xlabel('X')
             ax.set_ylabel('Y')
             ax.set_zlabel('Z')
             plt.show()
+
+    def cut_projection2gcode(self, arr0proj, arr1proj, prp_arr0, prp_arr1, prp_dict0, prp_dict1, gcode_conf, machine_conf):
+        gcode=[]
+        speed_old = 0
+        heat_old = 0
+
+        for i, (cp1, cp2, c_prop1) in enumerate(zip(arr0proj, arr1proj, prp_arr0)):
+
+            speed_new=prp_dict0['loc'][c_prop1]['feed']
+            heat_new= prp_dict0['loc'][c_prop1]['power']
+            angle =   prp_dict0['loc'][c_prop1]['angle']
+            # ref_coord = prp_dict0[c_prop1]['ref_coord']
+
+            if heat_new != heat_old:
+                line = '{0[0]} {0[1]}{1}'.format(gcode_conf['spindle'],
+                                        heat_new)
+                gcode.append(line)
+                heat_old = heat_new
+
+            if speed_new != speed_old:
+                line = '{0} {1}'.format(gcode_conf['speed'],
+                                        speed_new)
+                gcode.append(line)
+                speed_old = speed_new
+
+            if i==0:
+                line = 'G1 {1[4]} {0[2]:<8.2f} '.format([cp1, cp2, angle], machine_conf['ax'])
+                gcode.append(line)
+
+            line = 'G1 {1[0]} {0[0][0]:<8.2f} ' \
+                      '{1[1]} {0[0][1]:<8.2f} ' \
+                      '{1[2]} {0[1][0]:<8.2f} ' \
+                      '{1[3]} {0[1][1]:<8.2f} ' \
+                      '{1[4]} {0[2]:<8.2f} '.format([cp1, cp2, angle], machine_conf['ax'])
+
+            gcode.append(line)
+
+        gcode.append('{0[2]}'.format(gcode_conf['spindle']))
+        return gcode
+
+
+
+    def SaveGcode(self, gcode_fname):
+        gcode=[]
+        rt = self.conf['RTable_loc']
+        zs = self.conf['Z_span']
+        XYz = -rt
+        UVz = -rt + zs
+        machine_conf={
+    #axA master column
+        'ax':['X','Y', 'U', 'V', 'B'],
+    #distance between columns.
+        'AB_dist':0.45,
+    # distance between rotary table and column A
+        'AT_dist':0.225}
+        gcode_conf={'comment':['(',')'],
+                    'spindle':['M3','S','M5'],
+                    'speed':'F',
+                    'end':'M2'}
+
+        ct_len_list = []
+        ct_time_list = []
+
+        tot_ct_l = 0
+        tot_ct_t = 0
+
+        model_profile = self.md.model_profile
+
+        # print(ss)
+        print('{:-^79}'.format('GCODE'))
+
+        # for i, var1 in enumerate(ss):
+
+        for prof_num, ap in model_profile.items():
+
+            s = ap.axis_profile
+
+            if len(ap.axis_profile.keys())==2:
+
+                print(ap.axis_profile.keys())
+
+                # print(s)
+                chain_arr0 = self.SegArr2Poly(s[0].seg_sorted['seg'])
+                chain_arr1 = self.SegArr2Poly(s[1].seg_sorted['seg'])
+
+                prp_arr0 = np.hstack([s[0].seg_sorted['prp'],s[0].seg_sorted['prp'][-1]])
+                prp_arr1 = np.hstack([s[1].seg_sorted['prp'],s[1].seg_sorted['prp'][-1]])
+
+                poly_arr0 = chain_arr0
+                poly_arr1 = chain_arr1
+
+                poly_arr0proj = self.make_projection(poly_arr0, poly_arr1, XYz, 1)
+                poly_arr1proj = self.make_projection(poly_arr0, poly_arr1, UVz, 1)
+
+                arr0proj = poly_arr0proj[:,:2]
+                arr1proj = poly_arr1proj[:,:2]
+
+                prp_dict0 = s[0].prp_dict
+                prp_dict1 = s[1].prp_dict
+                # print(s[0].prp_dict)
+                # print(s[1].prp_dict)
+
+            else:
+                chain_arr0 = self.SegArr2Poly(s[0].seg_sorted['seg'])
+
+                prp_arr0 = np.hstack([s[0].seg_sorted['prp'],s[0].seg_sorted['prp'][-1]])
+                prp_arr1 = np.hstack([s[0].seg_sorted['prp'],s[0].seg_sorted['prp'][-1]])
+
+                poly_arr0 = chain_arr0
+
+                arr0proj=poly_arr0[:,:2]
+                arr1proj=poly_arr0[:,:2]
+
+                prp_dict0 = s[0].prp_dict
+                prp_dict1 = s[0].prp_dict
+                # print(s[0].prp_dict)
+
+        #
+            # gcode.append('{0[0]}layers: {1[0]} {1[1]}{0[1]}'.format(gcode_conf['comment'],[prop_dict1[0]['layer'], prop_dict2[0]['layer']]))
+            # gcode.append('{0[0]}sequence :{1}{0[1]}'.format(gcode_conf['comment'],i))
+        #
+        #
+        #     ct_l, ct_t = proj_stats(chain1_path, chain1_prop, prop_dict1)
+        #
+        #     print('{:-^79}'.format(prop_dict1[0]['layer']))
+        #     print('{0:8s}{1:10.0f}mm'.format('length:', ct_l))
+        #     print('{0:8s}{1:10.0f}s'.format('time:', ct_t))
+        #
+        #     tot_ct_l += ct_l
+        #     tot_ct_t += ct_t
+        #
+        #
+        #
+        # print('{:-^79}'.format('TOTAL'))
+        # print('{0:8s}{1:10.0f}mm'.format('length:', tot_ct_l))
+        # print('{0:8s}{1:10.0f}s'.format('time:', tot_ct_t))
+
+            gcode += self.cut_projection2gcode(arr0proj, arr1proj, prp_arr0, prp_arr1, prp_dict0, prp_dict1, gcode_conf, machine_conf)
+        gcode.append('{0}'.format(gcode_conf['end']))
+        gcode.append('%')
+
+
+
+        with open(gcode_fname,'w') as f:
+            for line in gcode:
+                f.write(line+'\n')

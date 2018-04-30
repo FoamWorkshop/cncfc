@@ -294,7 +294,7 @@ def main(args):
 
 #alternalive approach
     # prof_list = seq_list
-    conf = {'Z_span': 400, 'RTable_loc': 200}
+    conf = {'Z_span': 600, 'RTable_loc': 300}
     ct = CuttingSpace(conf)
     md = ModelProfile()
     for j,  seq_name in enumerate(seq_list):
@@ -319,7 +319,8 @@ def main(args):
 
     # md.Plot(mode = '3D')
     ct.Add2Cut(md)
-    ct.Plot(mode='3D')
+    # ct.Plot(mode='3D')
+    ct.SaveGcode('test.ngc')
     # s1.AddSeg('test')
     # lname_dxf_list = seq_list[0]
     # print(seq_list)
