@@ -51,7 +51,7 @@ class chain():
             return self.flip(seg_arr[iB], 1), iB
 
     def SortSegArr(self, buf_data, pt):
-        print('entered sort seg arr')
+        # print('entered sort seg arr')
         res_data = buf_data
         ref_pt = pt
         sol_data = np.array([np.empty_like(res_data[0])])
@@ -62,20 +62,21 @@ class chain():
             ref_pt = seg['seg'][1]
         return sol_data[1:], res_data
 
-    def MakePrpDict(self, prp_idx,  mtext):
+    def MakePrpDict(self, prp_idx, mtext, lname):
         prp_dict={'feed':200,
                       'ref_coord':np.zeros(3),
                       'power':0,
                       'angle':0,
                       'radius':np.zeros(3),
                       'cut_dir':'cw',
-                      # 'layer':layer,
+                      'lname':lname,
                       'split':None}
 
         start_pt = np.zeros(3)
 
         for text_obj in mtext:
             text = text_obj.get_text()
+
 
             d_feed    = re.findall('feed\s*=\s*([\.\d]+)', text)
             d_power   = re.findall('power\s*=\s*([\.\d]+)', text)
@@ -85,6 +86,8 @@ class chain():
             d_split   = re.findall('split.*=.*([\d]+).*', text)
             d_coord   = re.findall('.*coord_0.*', text, re.IGNORECASE)
             d_start   = re.findall('.*start.*', text, re.IGNORECASE)
+
+
 
             if d_feed:    prp_dict['feed']     = np.float(d_feed[0])
             if d_power:   prp_dict['power']    = np.float(d_power[0])
@@ -153,7 +156,7 @@ class chain():
                     self.seg_arr = np.append(self.seg_arr, seg_lin)
 
         # self.prp_dict.update(self.MakePrpDict(prp_idx,ltext))
-        self.MakePrpDict(prp_idx,ltext)
+        self.MakePrpDict(prp_idx,ltext, lname)
         # print('------------------------------')
         # print('self prp dict  ',self.prp_dict)
 
@@ -358,7 +361,7 @@ class CuttingSpace():
         proj_ch1 = []
 
         for var1, var2 in zip(ch1, ch2):
-            print(var1, var2)
+            # print(var1, var2)
             proj_ch1.append(self.line_plane_intersect(var2, var1, np.array([0,0,p1]), np.array([0,0, proj_dir])))
 
         return np.array(proj_ch1)
@@ -394,7 +397,8 @@ class CuttingSpace():
                     chain_arr1 = self.SegArr2Poly(s[1].seg_sorted['seg'])
 
                     prp_arr0 = np.hstack([s[0].seg_sorted['prp'],s[0].seg_sorted['prp'][-1]])
-                    prp_arr1 = np.hstack([s[1].seg_sorted['prp'],s[1].seg_sorted['prp'][-1]])
+                    prp_arr1 = np.hstack([s[1]
+                    .seg_sorted['prp'],s[1].seg_sorted['prp'][-1]])
 
                     poly_arr0 = self.transform_chain(chain_arr0, prp_arr0, s[0].prp_dict['loc'])
                     poly_arr1 = self.transform_chain(chain_arr1, prp_arr1, s[1].prp_dict['loc'])
@@ -448,13 +452,20 @@ class CuttingSpace():
         gcode=[]
         speed_old = 0
         heat_old = 0
+        lname_old=''
 
         for i, (cp1, cp2, c_prop1) in enumerate(zip(arr0proj, arr1proj, prp_arr0)):
 
+            lname_new=prp_dict0['loc'][c_prop1]['lname']
             speed_new=prp_dict0['loc'][c_prop1]['feed']
             heat_new= prp_dict0['loc'][c_prop1]['power']
             angle =   prp_dict0['loc'][c_prop1]['angle']
             # ref_coord = prp_dict0[c_prop1]['ref_coord']
+            if lname_new != lname_old:
+                line = '({1})'.format(gcode_conf['spindle'],
+                            lname_new)
+                gcode.append(line)
+                lname_old = lname_new
 
             if heat_new != heat_old:
                 line = '{0[0]} {0[1]}{1}'.format(gcode_conf['spindle'],
@@ -483,6 +494,43 @@ class CuttingSpace():
         gcode.append('{0[2]}'.format(gcode_conf['spindle']))
         return gcode
 
+    def proj_stats(self, master_io_path, master_io_prop, master_prop_dict):
+        '''
+        TODO: add rotation time!
+        '''
+        def ct_sect2(sect_arr):
+            p = sect_arr - np.roll(sect_arr,-1, axis=0)
+            l_arr = np.linalg.norm( p, axis=1)
+            return l_arr
+
+        def ct_speed2(l_arr, prop, prop_dict):
+            # print(prop)
+            # print('mmmmmmmmmm',prop_dict['loc'][prop[0]]['feed'])
+            if l_arr.size:
+                sect_speed = ct_sect2(l_arr) * 60 / np.array([prop_dict['loc'][key]['feed'] for key in prop])
+            else:
+                sect_speed = 0
+            return np.sum(sect_speed)
+
+        def ct_len_2(l_arr):
+            # print(l_arr)
+            if l_arr.size:
+                res = np.sum(ct_sect2(l_arr))
+            else:
+                res = 0
+            return res
+
+        ct_len_list = []
+        ct_time_list = []
+        # print('{:-^79}'.format('CUTTING STATS'))
+        # print(master_io_path)
+        io_ct_len = ct_len_2(master_io_path)
+        # print('ct len',io_ct_len)
+        # io_ct_len = 0
+        # io_ct_speed =0
+        io_ct_speed = ct_speed2(master_io_path, master_io_prop, master_prop_dict)
+        # print('layer:  {}'.format(master_prop_dict[0]['layer']))
+        return io_ct_len, io_ct_speed
 
 
     def SaveGcode(self, gcode_fname):
@@ -522,7 +570,7 @@ class CuttingSpace():
 
             if len(ap.axis_profile.keys())==2:
 
-                print(ap.axis_profile.keys())
+                # print(ap.axis_profile.keys())
 
                 # print(s)
                 chain_arr0 = self.SegArr2Poly(s[0].seg_sorted['seg'])
@@ -565,22 +613,24 @@ class CuttingSpace():
             # gcode.append('{0[0]}sequence :{1}{0[1]}'.format(gcode_conf['comment'],i))
         #
         #
-        #     ct_l, ct_t = proj_stats(chain1_path, chain1_prop, prop_dict1)
-        #
+            ct_l, ct_t = self.proj_stats(arr0proj, prp_arr0, prp_dict0)
+        # #
         #     print('{:-^79}'.format(prop_dict1[0]['layer']))
         #     print('{0:8s}{1:10.0f}mm'.format('length:', ct_l))
         #     print('{0:8s}{1:10.0f}s'.format('time:', ct_t))
+        # #
+            tot_ct_l += ct_l
+            tot_ct_t += ct_t
         #
-        #     tot_ct_l += ct_l
-        #     tot_ct_t += ct_t
         #
         #
-        #
-        # print('{:-^79}'.format('TOTAL'))
-        # print('{0:8s}{1:10.0f}mm'.format('length:', tot_ct_l))
-        # print('{0:8s}{1:10.0f}s'.format('time:', tot_ct_t))
 
             gcode += self.cut_projection2gcode(arr0proj, arr1proj, prp_arr0, prp_arr1, prp_dict0, prp_dict1, gcode_conf, machine_conf)
+
+        print('{:-^79}'.format('TOTAL'))
+        print('{0:8s}{1:10.0f}mm'.format('length:', tot_ct_l))
+        print('{0:8s}{1:10.0f}s'.format('time:', tot_ct_t))
+
         gcode.append('{0}'.format(gcode_conf['end']))
         gcode.append('%')
 

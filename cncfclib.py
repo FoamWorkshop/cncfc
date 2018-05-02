@@ -1464,14 +1464,14 @@ def make_projection(chain1, chain2, chain1_prop, chain2_prop, prop_dict1, prop_d
         proj_ch2.append(line_plane_intersect(var2, var1, np.array([0,0, 310]), np.array([0,0,1])))
         # proj_ch2 = cncfclib.proj_vector2plane(, n, y_dir = np.array([0,0,1])):
 
-    print('ch1',ch1[-1])
+    # print('ch1',ch1[-1])
     proj_ch1_arr = np.array(proj_ch1)
-    print('proj',proj_ch1_arr[-1])
+    # print('proj',proj_ch1_arr[-1])
 
 
-    print('ch2',ch2[-1])
+    # print('ch2',ch2[-1])
     proj_ch2_arr = np.array(proj_ch2)
-    print('proj',proj_ch2_arr[-1])
+    # print('proj',proj_ch2_arr[-1])
 
     if ret_full:
         return proj_ch1_arr, proj_ch2_arr
