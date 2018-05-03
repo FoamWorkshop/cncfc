@@ -109,7 +109,6 @@ from cncfc_obj import chain, AxisProfile, ModelProfile, CuttingSpace
 def nested_dict():
     return defaultdict(nested_dict)
 
-
 def merge(dict1, dict2):
     ''' Return a new dictionary by merging two dictionaries recursively. '''
 
@@ -168,10 +167,9 @@ def layers2seq(fname, req_layer):
     '''
 
     key = r'(^{})#(\d+)#([01_])#((\d+)?)(.*)'.format(req_layer)
-    # regex0 = re.compile("^{}(\(.*\))?$".format(req_layer), re.IGNORECASE)
+
     layer_list = []
     seq_layer_dict = nested_dict()
-    # seq_layer_dict_test = OrderedDict({})
 
     dwg = ezdxf.readfile(fname)
     for layer in dwg.layers:
@@ -198,105 +196,84 @@ def layers2seq(fname, req_layer):
         seq_list.append(col_list)
     return seq_list, seq_layer_dict
 
-def print_setings(args):
-
-    dxf_list = args.input
-    layer_list = args.layer
-    dec_acc = args.accuracy
-    n_arc = args.arc_seg_num
-    l_arc = args.arc_seg_len
-    path_dir = args.collection_dir
-    eq_sect = args.equivalence_knots
-    eq_sect_skip = args.skip_eq_sections
-    z_coord = args.z_coord
-    output_path = args.output_path
-
-    print('SETTINGS:')
-    print('{0}{1:<30}: {2}'.format(' ' * 10, 'decimal accuracy', dec_acc))
-    print('{0}{1:<30}: {2}'.format(' ' * 10, 'arc segments count', n_arc))
-    print('{0}{1:<30}: {2}'.format(' ' * 10, 'minimal arc segment length', l_arc))
-    print('{0}{1:<30}: {2}'.format(' ' * 10, 'equivalence sections', eq_sect))
-    print('{0}{1:<30}: {2}'.format(' ' * 10, 'skip equivalence sections', eq_sect_skip))
-    print('{0}{1:<30}: {2}'.format(' ' * 10, 'closed path collection dir', path_dir))
-    print('{0}{1:<30}: {2}'.format(' ' * 10, 'files', files_dxf))
-    print('{0}{1:<30}: {2}'.format(' ' * 10, 'layer name', layer_list[0]))
-    print('{0}{1:<30}: {2}'.format(' ' * 10, 'output paths', output_path))
-    print('{0}'.format('-' * 80))
-    return 0
+# def print_setings(args):
+#
+#     dxf_list = args.input
+#     layer_list = args.layer
+#     dec_acc = args.accuracy
+#     n_arc = args.arc_seg_num
+#     l_arc = args.arc_seg_len
+#     path_dir = args.collection_dir
+#     eq_sect = args.equivalence_knots
+#     eq_sect_skip = args.skip_eq_sections
+#     z_coord = args.z_coord
+#     output_path = args.output_path
+#
+#     print('SETTINGS:')
+#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'decimal accuracy', dec_acc))
+#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'arc segments count', n_arc))
+#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'minimal arc segment length', l_arc))
+#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'equivalence sections', eq_sect))
+#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'skip equivalence sections', eq_sect_skip))
+#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'closed path collection dir', path_dir))
+#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'files', files_dxf))
+#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'layer name', layer_list[0]))
+#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'output paths', output_path))
+#     print('{0}'.format('-' * 80))
+#     return 0
 
 def main(args):
+    """
+    machine oconfiguration:
+        *------------>XY
+        |    |
+        |    | d
+        |    |
+        |s   O--- 90deg
+        |    |
+        |    0deg
+        |
+        *------------>UV
+
+        O - rotary table axis, CCW dir, 0 towards UV axis
+        d - rotary table distance from XY
+        s - distance  between XY and UV columns
+
+    default configuration:
+        {'s': 480, 'd': 240}
+
+    layer naming convention:
+        A#XX#Y#ZZ~comment
+        A - layername
+        XX- sequence_number
+        Y - column number 0 - XY, 1-UV
+        ZZ- section number
+        ~comment
+
+    layer options specified int the textbox:
+        local (layer level):
+            feed - feed rate (NOT SCALED)
+            power - power on the wire
+            angle - rotary table rotation
+            radius - layer distance from the RT axis
+            coord_0 - reference coordinate sys, represents RT axis
+       TODO cut_dir - cutting dir for closed polygons
+       TODO split - split ploly line to number of sections
+
+        global (profile level):
+            start - indicates the starting point of the cut
+    """
 
     fname_dxf = args.input
     lname_dxf = args.layer
 
-    # dec_acc = args.accuracy
-    # n_arc = args.arc_seg_num
-    # l_arc = args.arc_seg_len
-    # path_dir = args.collection_dir
-    # eq_sect = args.equivalence_knots
-    # eq_sect_skip = args.skip_eq_sections
-    # z_coord = args.z_coord
-    # output_path = args.output_path
-    # s1 = cncfclib.chain(fname_dxf)
     seq_list, seq_dict = layers2seq(fname_dxf, lname_dxf)
 
-    # if seq_list:
-    #     ss=[]
-    #     for seq in seq_list:
-    #         pp =[]
-    #         for lname_dxf_list in seq:
-    #             # for ln in lname_dxf_list:
-    #             #     s1.AddSeg(lname_dxf_list[0])
-    #
-    #             cncfclib.dxf_read_2(fname_dxf, lname_dxf_list[0])
-    #             io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1 = cncfclib.extract_dxf_path(fname_dxf, lname_dxf_list)
-    #             pp.append([io_path1, lo_path1, io_path_prop1, lo_path_prop1, prop_dict1])
-    #
-    #         if len(pp)==1:
-    #             pp1 = deepcopy(pp)
-    #             for dset in pp1:
-    #                 for k in dset[-1].keys():
-    #                     dset[-1][k]['radius'] = np.array([0,0,1])
-    #
-    #             ss.append([pp[0], pp1[0]])
-    #         else:
-    #             ss.append(pp)
-    #             print('pp len',len(pp))
+    conf = {'Z_span': 480, 'RTable_loc': 240}
 
-    # if seq_list:
-    #     ss=[]
-    #     for seq in seq_list:
-    #         pp =[]
-    # for lname_dxf_list in seq_list[-1]:
-#test of the alternative solution for dxf data collection
-        # for k1, v1 in seq_dict.items():
-        #     for k2, v2 in v1.items():
-        #         for layer in v2.keys():
-        #             seq_dict[k1][k2] = cncfclib.extract_dxf_layer_data(fname_dxf, layer)
-
-        # for k1, v1 in seq_dict.items():
-        #     for k2, v2 in v1.items():
-        #         print(k1, k2)
-                # seq_dict[k1][k2] = cncfclib.extract_dxf_path(fname_dxf, v2.keys())
-            # if len(pp)==1:
-            #     ss.append(pp*2)
-            # else:
-            #     ss.append(pp)
-
-        # print(ss)
-        # cncfclib.plot_path1(ss)
-    #     gcodelib.print_gcode(ss)
-    #
-    # else:
-    #     print('No layers matching the pattern. Layer list is empty')
-    #
-    # print('\nDone. Thank you!')
-
-#alternalive approach
-    # prof_list = seq_list
-    conf = {'Z_span': 600, 'RTable_loc': 300}
     ct = CuttingSpace(conf)
     md = ModelProfile()
+
     for j,  seq_name in enumerate(seq_list):
 
         ap = AxisProfile()
@@ -317,28 +294,11 @@ def main(args):
             # ap.Plot(mode='2D')
         md.Add2Prof(j, ap)
 
-    # md.Plot(mode = '3D')
+    md.Plot(mode = '3D')
     ct.Add2Cut(md)
     # ct.Plot(mode='3D')
     ct.SaveGcode('test.ngc')
-    # s1.AddSeg('test')
-    # lname_dxf_list = seq_list[0]
-    # print(seq_list)
-    # print(lname_dxf_list)
 
-    # for ln in lname_dxf_list[0]:
-    # print('seg ln',ln)
-
-    # print(ln[0][0])
-    # s1.AddSct(0)
-    # s1.AddSct(1)
-    # s1.AddSct(2)
-    # s1.AddSeg(ln[0][1])
-    # s1.AddSeg(ln[0][0])
-
-    # print(r1)
-    # for var in r1['seg']:
-    #     print(var)
 if __name__ == '__main__':
     #*********************************************************************DEFAULT PARAMETERS
     dflt_dxf_list = 'all'
