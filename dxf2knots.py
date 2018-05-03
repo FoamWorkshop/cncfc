@@ -92,22 +92,11 @@ program algorithm:
 
 import argparse
 import sys
-
-import numpy as np
-import pickle
 import cncfclib
 import gcodelib
-import os
-import re
-import matplotlib.pyplot as plt
-import ezdxf
-from collections import defaultdict
-from collections import OrderedDict
-from copy import deepcopy
 from cncfc_obj import chain, AxisProfile, ModelProfile, CuttingSpace
 
-# def nested_dict():
-#     return defaultdict(nested_dict)
+
 
 
 # def print_setings(args):
@@ -138,6 +127,13 @@ from cncfc_obj import chain, AxisProfile, ModelProfile, CuttingSpace
 
 def main(args):
     """
+    DXF model organisation:
+        layers
+        polyline
+        profile
+        sections
+        cutting sections
+
     machine oconfiguration:
         *------------>XY
         |    |
