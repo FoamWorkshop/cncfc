@@ -106,95 +106,9 @@ from collections import OrderedDict
 from copy import deepcopy
 from cncfc_obj import chain, AxisProfile, ModelProfile, CuttingSpace
 
-def nested_dict():
-    return defaultdict(nested_dict)
+# def nested_dict():
+#     return defaultdict(nested_dict)
 
-def merge(dict1, dict2):
-    ''' Return a new dictionary by merging two dictionaries recursively. '''
-
-    result = deepcopy(dict1)
-
-    for key, value in dict2.items():
-        if isinstance(value, collections.Mapping):
-            result[key] = merge(result.get(key, {}), value)
-        else:
-            result[key] = deepcopy(dict2[key])
-
-    return result
-def update_dict(d, u):
-    for k, v in u.items():
-        if isinstance(v, collections.Mapping):
-            default = v.copy()
-            default.clear()
-            r = update_dict(d.get(k, default), v)
-            d[k] = r
-        else:
-            d[k] = v
-    return d
-
-def print_nested(val, buf, nesting = -1, prefix ='', bt=''):
-    if len(val):
-        nesting += 1
-        for i, k in enumerate(sorted(val)):
-            # print('val ',k)
-            text_path= k
-            if nesting==0:
-                bt=' '*(nesting-1)
-            else:
-                if i+1 == len(val):
-                    bt=prefix +'*--'
-                else:
-                    bt=prefix + '|--'
-            buf.append('{}{}{}'.format(bt, text_path, ''))
-            if len(val) > 1 and i != len(val) - 1:
-                tmp_prefix = prefix + '| '
-            else:
-                tmp_prefix = prefix + ' '
-            buf = print_nested(val[k], buf, nesting, tmp_prefix, bt)
-    else:
-        buf.append(val)
-    return buf
-
-
-def layers2seq(fname, req_layer):
-    '''layer naming convention:
-        A#XX#Y#ZZ~comment
-        A - layername
-        XX- sequence_number
-        Y - column number 0 - flat, 1-XY, 2-UV
-        ZZ- section number, might be empty
-        ~comment
-    '''
-
-    key = r'(^{})#(\d+)#([01_])#((\d+)?)(.*)'.format(req_layer)
-
-    layer_list = []
-    seq_layer_dict = nested_dict()
-
-    dwg = ezdxf.readfile(fname)
-    for layer in dwg.layers:
-        split_layer_name = re.findall(key, layer.dxf.name, re.IGNORECASE)
-        if split_layer_name:
-            seq_idx = split_layer_name[0][1]
-            col_idx = split_layer_name[0][2]
-            seq_layer_dict[seq_idx][col_idx][layer.dxf.name]=[]
-
-    seq_layer_dict = OrderedDict(sorted(seq_layer_dict.items(), key = lambda x: x[0]))
-
-    print('{:-^79}'.format('MODEL STRUCTURE'))
-    for var in print_nested(seq_layer_dict, []):
-        if var: print(var)
-
-    seq_list = []
-    for seq_key in sorted(seq_layer_dict.keys()):
-        col_list = []
-        for plane_key in sorted(seq_layer_dict[seq_key].keys()):
-            layer_list = []
-            for layer in sorted(seq_layer_dict[seq_key][plane_key].keys()):
-                layer_list.append(layer)
-            col_list.append(layer_list)
-        seq_list.append(col_list)
-    return seq_list, seq_layer_dict
 
 # def print_setings(args):
 #
@@ -267,7 +181,7 @@ def main(args):
     fname_dxf = args.input
     lname_dxf = args.layer
 
-    seq_list, seq_dict = layers2seq(fname_dxf, lname_dxf)
+    seq_list, seq_dict = cncfclib.layers2seq(fname_dxf, lname_dxf)
 
     conf = {'Z_span': 480, 'RTable_loc': 240}
 
@@ -275,15 +189,12 @@ def main(args):
     md = ModelProfile()
 
     for j,  seq_name in enumerate(seq_list):
-
         ap = AxisProfile()
 
         for i, axis_name in enumerate(seq_name):
-
             s1 = chain(fname_dxf)
 
             for prof_name in axis_name:
-
                 s1.AddSeg(prof_name)
 
             s1.ApplyTransformations()

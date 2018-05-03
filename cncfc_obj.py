@@ -160,12 +160,6 @@ class chain():
         # print('------------------------------')
         # print('self prp dict  ',self.prp_dict)
 
-    def PrintList(self):
-        # pp.pprint( np.vstack(self.seg_arr) )
-        # pp.pprint( self.prp_dict )
-        print('')
-        # print(dxf_read_2(self.dwg, lname))
-
     def ApplyTransformations(self):
         #apply coord transform
         main_key = list(self.prp_dict['loc'].keys())[0]
@@ -194,6 +188,7 @@ class chain():
             fig = plt.figure()
             ax = fig.gca()
             ax.plot(x_arr,y_arr)
+        plt.ion()
         plt.show()
 
 
@@ -258,7 +253,7 @@ class ModelProfile():
 
     def transform_chain(self, chain, prp_arr, prp_dict):
         chain_tr = []
-        print(chain)
+        # print(chain)
         for pt, idx in zip(chain, prp_arr):
             chain_tr.append(self.transform_pt(pt, angle=prp_dict[idx]['angle']))
             # chain_tr.append(self.transform_pt(pt,ref_coord = prp_dict[idx]['ref_coord'], angle=prp_dict[idx]['angle']))
@@ -447,6 +442,7 @@ class CuttingSpace():
             ax.set_ylabel('Y')
             ax.set_zlabel('Z')
             plt.show()
+
 
     def cut_projection2gcode(self, arr0proj, arr1proj, prp_arr0, prp_arr1, prp_dict0, prp_dict1, gcode_conf, machine_conf):
         gcode=[]
