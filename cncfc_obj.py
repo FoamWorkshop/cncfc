@@ -77,17 +77,14 @@ class chain():
         for text_obj in mtext:
             text = text_obj.get_text()
 
-
             d_feed    = re.findall('feed\s*=\s*([\.\d]+)', text)
             d_power   = re.findall('power\s*=\s*([\.\d]+)', text)
             d_angle   = re.findall('angle\s*=\s*([\-\.\d]+)', text)
             d_radius  = re.findall('radius\s*=\s*([\-\.\d]+)', text)
-            d_cut_dir = re.findall('cut_dir.*=.*(c?cw).*', text)
-            d_split   = re.findall('split.*=.*([\d]+).*', text)
+            d_cut_dir = re.findall('cut_dir\s*=\s*(c?cw).*', text)
+            d_split   = re.findall('split\s*=\s*([\d]+).*', text)
             d_coord   = re.findall('.*coord_0.*', text, re.IGNORECASE)
             d_start   = re.findall('.*start.*', text, re.IGNORECASE)
-
-
 
             if d_feed:    prp_dict['feed']     = np.float(d_feed[0])
             if d_power:   prp_dict['power']    = np.float(d_power[0])
@@ -111,7 +108,6 @@ class chain():
 
     def AddSeg( self, lname):
         prp_idx = hash(lname)
-
         modelspace = self.dwg.modelspace()
         lines = modelspace.query('LINE[layer=="{}"]'.format(lname))
         arcs = modelspace.query('ARC[layer=="{}"]'.format(lname))
@@ -127,8 +123,6 @@ class chain():
             tol = 5
 
             for var in arcs:
-                # print('dasdasdasdasadsasssssssssssssssssssssssssss')
-                # print(var.dxf.start_angle)
                 O =      var.dxf.center
                 R =      var.dxf.radius
                 angl_1 = var.dxf.start_angle * np.pi / 180
@@ -155,18 +149,16 @@ class chain():
                     # print(( np.round(( ARC_knots_list[i:i + 2][0], ARC_knots_list[i:i + 2][1] ),4)))
                     self.seg_arr = np.append(self.seg_arr, seg_lin)
 
-        # self.prp_dict.update(self.MakePrpDict(prp_idx,ltext))
         self.MakePrpDict(prp_idx,ltext, lname)
-        # print('------------------------------')
-        # print('self prp dict  ',self.prp_dict)
+
+    def Seg2Prof(self):
+        print('')
 
     def ApplyTransformations(self):
-        #apply coord transform
+#apply coord transform
         main_key = list(self.prp_dict['loc'].keys())[0]
         coord_0 = self.prp_dict['loc'][main_key]['ref_coord']
         radius_0 = self.prp_dict['loc'][main_key]['radius']
-        # print(coord_0)
-        # print(self.prp_dict['glob']['start'])
         self.seg_arr['seg'] -= coord_0
         self.seg_arr['seg'] += radius_0
         self.prp_dict['glob']['start'] -=coord_0
@@ -177,7 +169,32 @@ class chain():
         r1, r2 = self.SortSegArr(buf_data, pt)
         self.seg_sorted = r1
         return r1
-#
+
+    def MakeSplit(self):
+        for ids, loc_dict in self.prp_dict['loc'].items():
+            if loc_dict['split']:
+                print(loc_dict['split'])
+                # self.MakeChain()
+        # v = arr[:,1] - arr[:,0]
+        #
+        # l_norm = np.linalg.norm(v, axis=1)
+        # l_cs = np.hstack((0, np.cumsum(l_norm)))
+        #
+        # n_seg = np.linspace(0,np.sum(l_norm),splits)
+        # x=np.interp(n_seg, l_cs, np.hstack((arr[:,0,0], arr[-1,1,0])))
+        # y=np.interp(n_seg, l_cs, np.hstack((arr[:,0,1], arr[-1,1,1])))
+        # z=np.interp(n_seg, l_cs, np.hstack((arr[:,0,2], arr[-1,1,2])))
+        #
+        # arr_buff0 = np.column_stack((x, y, z))
+        # arr_buff1= np.roll(arr_buff0, -1, axis=0)
+        # arr_buff  = np.stack((arr_buff0, arr_buff1),axis=1)[:-1]
+        # prop_buff = np.ones(arr_buff.shape[0], dtype=np.int) * props[0]
+        #
+        # return arr_buff, prop_buff
+
+
+
+
     def PlotChain(self, mode = '2D'):
         if '2D' in mode:
             poly_arr = self.SegArr2Poly(self.seg_sorted['seg'])
