@@ -101,8 +101,9 @@ def main(args):
 
             for prof_name in axis_name:
                 s1.AddSeg(prof_name)
-                s1.MakeSplit()
+                # s1.MakeSplit()
 
+            s1.Seg2Prof()
             s1.ApplyTransformations()
             s1.MakeChain()
             # s1.PlotChain()

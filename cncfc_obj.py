@@ -107,6 +107,7 @@ class chain():
         print(self.model)
 
     def AddSeg( self, lname):
+        new_seg = np.array([], dtype = self.seg_dt)
         prp_idx = hash(lname)
         modelspace = self.dwg.modelspace()
         lines = modelspace.query('LINE[layer=="{}"]'.format(lname))
@@ -115,7 +116,7 @@ class chain():
 
         if lines:
             seg_lin = np.stack([np.array([ ( np.round(( line.dxf.start, line.dxf.end ),4),prp_idx)], dtype = self.seg_dt) for line in lines], axis = 0)
-            self.seg_arr = np.append(self.seg_arr, seg_lin)
+            new_seg = np.append(new_seg, seg_lin)
 
         if arcs:
             n = 10;
@@ -147,9 +148,13 @@ class chain():
                     # print(ARC_knots_list[i:i + 2])
                     seg_lin = np.stack([np.array([ ( np.round(( ARC_knots_list[i:i + 2][0], ARC_knots_list[i:i + 2][1] ),4),prp_idx)], dtype = self.seg_dt) for line in lines], axis = 0)
                     # print(( np.round(( ARC_knots_list[i:i + 2][0], ARC_knots_list[i:i + 2][1] ),4)))
-                    self.seg_arr = np.append(self.seg_arr, seg_lin)
+                    new_seg = np.append(new_seg, seg_lin)
 
-        self.MakePrpDict(prp_idx,ltext, lname)
+        self.MakePrpDict(prp_idx, ltext, lname)
+        new_seg = self.MakeSplit(prp_idx, new_seg)
+        self.seg_arr = np.append(self.seg_arr, new_seg)
+
+
 
     def Seg2Prof(self):
         print('')
@@ -163,34 +168,47 @@ class chain():
         self.seg_arr['seg'] += radius_0
         self.prp_dict['glob']['start'] -=coord_0
 
-    def MakeChain(self):
-        pt = self.prp_dict['glob']['start']
-        buf_data = np.unique(self.OrderSegArr(self.seg_arr), axis = 0)
-        r1, r2 = self.SortSegArr(buf_data, pt)
-        self.seg_sorted = r1
-        return r1
+    def MakeChain(self, seg_arr = None):
 
-    def MakeSplit(self):
-        for ids, loc_dict in self.prp_dict['loc'].items():
-            if loc_dict['split']:
-                print(loc_dict['split'])
-                # self.MakeChain()
-        # v = arr[:,1] - arr[:,0]
-        #
-        # l_norm = np.linalg.norm(v, axis=1)
-        # l_cs = np.hstack((0, np.cumsum(l_norm)))
-        #
-        # n_seg = np.linspace(0,np.sum(l_norm),splits)
-        # x=np.interp(n_seg, l_cs, np.hstack((arr[:,0,0], arr[-1,1,0])))
-        # y=np.interp(n_seg, l_cs, np.hstack((arr[:,0,1], arr[-1,1,1])))
-        # z=np.interp(n_seg, l_cs, np.hstack((arr[:,0,2], arr[-1,1,2])))
-        #
-        # arr_buff0 = np.column_stack((x, y, z))
-        # arr_buff1= np.roll(arr_buff0, -1, axis=0)
-        # arr_buff  = np.stack((arr_buff0, arr_buff1),axis=1)[:-1]
-        # prop_buff = np.ones(arr_buff.shape[0], dtype=np.int) * props[0]
-        #
-        # return arr_buff, prop_buff
+        if seg_arr is None:
+            pt = self.prp_dict['glob']['start']
+            buf_data = np.unique(self.OrderSegArr(self.seg_arr), axis = 0)
+
+        else:
+            pt = np.zeros(3)
+            buf_data = np.unique(self.OrderSegArr(seg_arr), axis = 0)
+
+        chain, rest = self.SortSegArr(buf_data, pt)
+        self.seg_sorted = chain
+        return chain
+
+    def MakeSplit(self, prp_id, seg_arr):
+
+        if 'split' in self.prp_dict['loc'][prp_id].keys():
+            split = self.prp_dict['loc'][prp_id]['split']
+
+            if split:
+                chain_arr = self.MakeChain(seg_arr)
+                v = chain_arr['seg'][:,1] - chain_arr['seg'][:,0]
+
+                l_norm = np.linalg.norm(v, axis=1)
+                l_cs = np.hstack((0, np.cumsum(l_norm)))
+
+                n_seg = np.linspace(0, np.sum(l_norm), split + 1)
+                x=np.interp(n_seg, l_cs, np.hstack((chain_arr['seg'][:,0,0], chain_arr['seg'][-1,1,0])))
+                y=np.interp(n_seg, l_cs, np.hstack((chain_arr['seg'][:,0,1], chain_arr['seg'][-1,1,1])))
+                z=np.interp(n_seg, l_cs, np.hstack((chain_arr['seg'][:,0,2], chain_arr['seg'][-1,1,2])))
+
+                arr_buff0 = np.column_stack((x, y, z))
+
+                arr_buff1= np.roll(arr_buff0, -1, axis=0)
+                arr_buff  = np.stack((arr_buff0, arr_buff1),axis=1)[:-1]
+                prop_buff = np.ones(arr_buff.shape[0], dtype=np.int) * prp_id
+
+                return np.stack([np.array( ( seg, prp), dtype = self.seg_dt) for seg, prp in zip(arr_buff, prop_buff)], axis = 0)
+
+
+        return seg_arr
 
 
 
