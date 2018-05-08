@@ -141,23 +141,18 @@ class chain():
 
                 ARC_knots_list = []
                 for i, angl in enumerate(angl_list):
-                    # print(i)
                     ARC_knots_list.append((O[0] + R * np.cos(angl), O[1] + R * np.sin(angl), O[2]))
 
                 for i in range(n - 1):
-                    # print(ARC_knots_list[i:i + 2])
                     seg_lin = np.stack([np.array([ ( np.round(( ARC_knots_list[i:i + 2][0], ARC_knots_list[i:i + 2][1] ),4),prp_idx)], dtype = self.seg_dt) for line in lines], axis = 0)
-                    # print(( np.round(( ARC_knots_list[i:i + 2][0], ARC_knots_list[i:i + 2][1] ),4)))
                     new_seg = np.append(new_seg, seg_lin)
 
         self.MakePrpDict(prp_idx, ltext, lname)
         new_seg = self.MakeSplit(prp_idx, new_seg)
         self.seg_arr = np.append(self.seg_arr, new_seg)
 
-
-
-    def Seg2Prof(self):
-        print('')
+    # def Seg2Prof(self):
+    #     print('')
 
     def ApplyTransformations(self):
 #apply coord transform
@@ -168,7 +163,7 @@ class chain():
         self.seg_arr['seg'] += radius_0
         self.prp_dict['glob']['start'] -=coord_0
 
-    def MakeChain(self, seg_arr = None):
+    def Seg2Poly(self, seg_arr = None):
 
         if seg_arr is None:
             pt = self.prp_dict['glob']['start']
@@ -182,22 +177,22 @@ class chain():
         self.seg_sorted = chain
         return chain
 
-    def MakeSplit(self, prp_id, seg_arr):
 
+    def MakeSplit(self, prp_id, seg_arr):
         if 'split' in self.prp_dict['loc'][prp_id].keys():
             split = self.prp_dict['loc'][prp_id]['split']
 
             if split:
-                chain_arr = self.MakeChain(seg_arr)
-                v = chain_arr['seg'][:,1] - chain_arr['seg'][:,0]
+                poly_arr = self.Seg2Poly(seg_arr)
+                v = poly_arr['seg'][:,1] - poly_arr['seg'][:,0]
 
                 l_norm = np.linalg.norm(v, axis=1)
                 l_cs = np.hstack((0, np.cumsum(l_norm)))
 
                 n_seg = np.linspace(0, np.sum(l_norm), split + 1)
-                x=np.interp(n_seg, l_cs, np.hstack((chain_arr['seg'][:,0,0], chain_arr['seg'][-1,1,0])))
-                y=np.interp(n_seg, l_cs, np.hstack((chain_arr['seg'][:,0,1], chain_arr['seg'][-1,1,1])))
-                z=np.interp(n_seg, l_cs, np.hstack((chain_arr['seg'][:,0,2], chain_arr['seg'][-1,1,2])))
+                x=np.interp(n_seg, l_cs, np.hstack((poly_arr['seg'][:,0,0], poly_arr['seg'][-1,1,0])))
+                y=np.interp(n_seg, l_cs, np.hstack((poly_arr['seg'][:,0,1], poly_arr['seg'][-1,1,1])))
+                z=np.interp(n_seg, l_cs, np.hstack((poly_arr['seg'][:,0,2], poly_arr['seg'][-1,1,2])))
 
                 arr_buff0 = np.column_stack((x, y, z))
 
@@ -207,10 +202,7 @@ class chain():
 
                 return np.stack([np.array( ( seg, prp), dtype = self.seg_dt) for seg, prp in zip(arr_buff, prop_buff)], axis = 0)
 
-
         return seg_arr
-
-
 
 
     def PlotChain(self, mode = '2D'):
@@ -287,13 +279,13 @@ class ModelProfile():
         return np.dot(M0, p_abs) #+ np.dot(M0, r)
 
     def transform_chain(self, chain, prp_arr, prp_dict):
-        chain_tr = []
+        poly_tr = []
         # print(chain)
         for pt, idx in zip(chain, prp_arr):
-            chain_tr.append(self.transform_pt(pt, angle=prp_dict[idx]['angle']))
-            # chain_tr.append(self.transform_pt(pt,ref_coord = prp_dict[idx]['ref_coord'], angle=prp_dict[idx]['angle']))
-            # chain_tr.append(self.transform_pt(pt,ref_coord = prp_dict[idx]['ref_coord'], angle=prp_dict[idx]['angle'], r=prp_dict[idx]['radius']))
-        return np.array(chain_tr)
+            poly_tr.append(self.transform_pt(pt, angle=prp_dict[idx]['angle']))
+            # poly_tr.append(self.transform_pt(pt,ref_coord = prp_dict[idx]['ref_coord'], angle=prp_dict[idx]['angle']))
+            # poly_tr.append(self.transform_pt(pt,ref_coord = prp_dict[idx]['ref_coord'], angle=prp_dict[idx]['angle'], r=prp_dict[idx]['radius']))
+        return np.array(poly_tr)
 
 
     def SegArr2Poly(self, seg):
@@ -314,9 +306,9 @@ class ModelProfile():
             for prof_num, ap in self.model_profile.items():
                 for sec_num, s in ap.axis_profile.items():
 
-                    chain_arr = self.SegArr2Poly(s.seg_sorted['seg'])
+                    poly_arr = self.SegArr2Poly(s.seg_sorted['seg'])
                     prp_arr = np.hstack([s.seg_sorted['prp'],s.seg_sorted['prp'][-1]])
-                    poly_arr = self.transform_chain(chain_arr, prp_arr, s.prp_dict['loc'])
+                    poly_arr = self.transform_chain(poly_arr, prp_arr, s.prp_dict['loc'])
 
                     x_arr = poly_arr[:,0]
                     y_arr = poly_arr[:,1]
@@ -354,12 +346,12 @@ class CuttingSpace():
         return np.dot(M0, p_abs) #+ np.dot(M0, r)
 
     def transform_chain(self, chain, prp_arr, prp_dict):
-        chain_tr = []
+        poly_tr = []
 
         for pt, idx in zip(chain, prp_arr):
-            chain_tr.append(self.transform_pt(pt, angle=prp_dict[idx]['angle']))
+            poly_tr.append(self.transform_pt(pt, angle=prp_dict[idx]['angle']))
 
-        return np.array(chain_tr)
+        return np.array(poly_tr)
 
 
     def SegArr2Poly(self, seg):
@@ -423,15 +415,15 @@ class CuttingSpace():
 
                     s = ap.axis_profile
                     # print(s)
-                    chain_arr0 = self.SegArr2Poly(s[0].seg_sorted['seg'])
-                    chain_arr1 = self.SegArr2Poly(s[1].seg_sorted['seg'])
+                    poly_arr0 = self.SegArr2Poly(s[0].seg_sorted['seg'])
+                    poly_arr1 = self.SegArr2Poly(s[1].seg_sorted['seg'])
 
                     prp_arr0 = np.hstack([s[0].seg_sorted['prp'],s[0].seg_sorted['prp'][-1]])
                     prp_arr1 = np.hstack([s[1]
                     .seg_sorted['prp'],s[1].seg_sorted['prp'][-1]])
 
-                    poly_arr0 = self.transform_chain(chain_arr0, prp_arr0, s[0].prp_dict['loc'])
-                    poly_arr1 = self.transform_chain(chain_arr1, prp_arr1, s[1].prp_dict['loc'])
+                    poly_arr0 = self.transform_chain(poly_arr0, prp_arr0, s[0].prp_dict['loc'])
+                    poly_arr1 = self.transform_chain(poly_arr1, prp_arr1, s[1].prp_dict['loc'])
 
                     poly_arr0proj = self.make_projection(poly_arr0, poly_arr1, XYz, 1)
                     poly_arr1proj = self.make_projection(poly_arr0, poly_arr1, UVz, 1)
@@ -458,9 +450,9 @@ class CuttingSpace():
 
                 else:
                     s = ap.axis_profile[0]
-                    chain_arr = self.SegArr2Poly(s.seg_sorted['seg'])
+                    poly_arr = self.SegArr2Poly(s.seg_sorted['seg'])
                     prp_arr0 = np.hstack([s.seg_sorted['prp'],s.seg_sorted['prp'][-1]])
-                    poly_arr = self.transform_chain(chain_arr, prp_arr0, s.prp_dict['loc'])
+                    poly_arr = self.transform_chain(poly_arr, prp_arr0, s.prp_dict['loc'])
 
                     x_arr = poly_arr[:,0]
                     y_arr = poly_arr[:,1]
@@ -535,8 +527,6 @@ class CuttingSpace():
             return l_arr
 
         def ct_speed2(l_arr, prop, prop_dict):
-            # print(prop)
-            # print('mmmmmmmmmm',prop_dict['loc'][prop[0]]['feed'])
             if l_arr.size:
                 sect_speed = ct_sect2(l_arr) * 60 / np.array([prop_dict['loc'][key]['feed'] for key in prop])
             else:
@@ -553,14 +543,8 @@ class CuttingSpace():
 
         ct_len_list = []
         ct_time_list = []
-        # print('{:-^79}'.format('CUTTING STATS'))
-        # print(master_io_path)
         io_ct_len = ct_len_2(master_io_path)
-        # print('ct len',io_ct_len)
-        # io_ct_len = 0
-        # io_ct_speed =0
         io_ct_speed = ct_speed2(master_io_path, master_io_prop, master_prop_dict)
-        # print('layer:  {}'.format(master_prop_dict[0]['layer']))
         return io_ct_len, io_ct_speed
 
 
@@ -604,14 +588,14 @@ class CuttingSpace():
                 # print(ap.axis_profile.keys())
 
                 # print(s)
-                chain_arr0 = self.SegArr2Poly(s[0].seg_sorted['seg'])
-                chain_arr1 = self.SegArr2Poly(s[1].seg_sorted['seg'])
+                poly_arr0 = self.SegArr2Poly(s[0].seg_sorted['seg'])
+                poly_arr1 = self.SegArr2Poly(s[1].seg_sorted['seg'])
 
                 prp_arr0 = np.hstack([s[0].seg_sorted['prp'],s[0].seg_sorted['prp'][-1]])
                 prp_arr1 = np.hstack([s[1].seg_sorted['prp'],s[1].seg_sorted['prp'][-1]])
 
-                poly_arr0 = chain_arr0
-                poly_arr1 = chain_arr1
+                poly_arr0 = poly_arr0
+                poly_arr1 = poly_arr1
 
                 poly_arr0proj = self.make_projection(poly_arr0, poly_arr1, XYz, 1)
                 poly_arr1proj = self.make_projection(poly_arr0, poly_arr1, UVz, 1)
@@ -621,40 +605,25 @@ class CuttingSpace():
 
                 prp_dict0 = s[0].prp_dict
                 prp_dict1 = s[1].prp_dict
-                # print(s[0].prp_dict)
-                # print(s[1].prp_dict)
 
             else:
-                chain_arr0 = self.SegArr2Poly(s[0].seg_sorted['seg'])
+                poly_arr0 = self.SegArr2Poly(s[0].seg_sorted['seg'])
 
                 prp_arr0 = np.hstack([s[0].seg_sorted['prp'],s[0].seg_sorted['prp'][-1]])
                 prp_arr1 = np.hstack([s[0].seg_sorted['prp'],s[0].seg_sorted['prp'][-1]])
 
-                poly_arr0 = chain_arr0
+                poly_arr0 = poly_arr0
 
                 arr0proj=poly_arr0[:,:2]
                 arr1proj=poly_arr0[:,:2]
 
                 prp_dict0 = s[0].prp_dict
                 prp_dict1 = s[0].prp_dict
-                # print(s[0].prp_dict)
 
-        #
-            # gcode.append('{0[0]}layers: {1[0]} {1[1]}{0[1]}'.format(gcode_conf['comment'],[prop_dict1[0]['layer'], prop_dict2[0]['layer']]))
-            # gcode.append('{0[0]}sequence :{1}{0[1]}'.format(gcode_conf['comment'],i))
-        #
-        #
             ct_l, ct_t = self.proj_stats(arr0proj, prp_arr0, prp_dict0)
-        # #
-        #     print('{:-^79}'.format(prop_dict1[0]['layer']))
-        #     print('{0:8s}{1:10.0f}mm'.format('length:', ct_l))
-        #     print('{0:8s}{1:10.0f}s'.format('time:', ct_t))
-        # #
+
             tot_ct_l += ct_l
             tot_ct_t += ct_t
-        #
-        #
-        #
 
             gcode += self.cut_projection2gcode(arr0proj, arr1proj, prp_arr0, prp_arr1, prp_dict0, prp_dict1, gcode_conf, machine_conf)
 
@@ -664,8 +633,6 @@ class CuttingSpace():
 
         gcode.append('{0}'.format(gcode_conf['end']))
         gcode.append('%')
-
-
 
         with open(gcode_fname,'w') as f:
             for line in gcode:

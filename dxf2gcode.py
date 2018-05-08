@@ -3,36 +3,12 @@ from __future__ import division
 __author__ = 'FoamWorkshop'
 
 import argparse
+import configparser
 import sys
 import cncfclib
 import gcodelib
 from cncfc_obj import chain, AxisProfile, ModelProfile, CuttingSpace
-
-# def print_setings(args):
-#
-#     dxf_list = args.input
-#     layer_list = args.layer
-#     dec_acc = args.accuracy
-#     n_arc = args.arc_seg_num
-#     l_arc = args.arc_seg_len
-#     path_dir = args.collection_dir
-#     eq_sect = args.equivalence_knots
-#     eq_sect_skip = args.skip_eq_sections
-#     z_coord = args.z_coord
-#     output_path = args.output_path
-#
-#     print('SETTINGS:')
-#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'decimal accuracy', dec_acc))
-#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'arc segments count', n_arc))
-#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'minimal arc segment length', l_arc))
-#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'equivalence sections', eq_sect))
-#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'skip equivalence sections', eq_sect_skip))
-#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'closed path collection dir', path_dir))
-#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'files', files_dxf))
-#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'layer name', layer_list[0]))
-#     print('{0}{1:<30}: {2}'.format(' ' * 10, 'output paths', output_path))
-#     print('{0}'.format('-' * 80))
-#     return 0
+import re
 
 def main(args):
     """
@@ -76,12 +52,44 @@ def main(args):
             angle - rotary table rotation
             radius - layer distance from the RT axis
             coord_0 - reference coordinate sys, represents RT axis
+            split - split ploly line to number of sections
        TODO cut_dir - cutting dir for closed polygons
-       TODO split - split ploly line to number of sections
 
         global (profile level):
             start - indicates the starting point of the cut
+
+        gcode making steps:
+        1. segments - all curves in dxf layer are convetred to lines, which in general, are unsorted. Those lines (2 3d points) are called segments later. A collection of segments form several layers make an unsorted profile.
+        2. transformation - in order to sort segments and convert to a single polyline, following transformations are applied:
+            *move to local CSYS
+            *move to coresponding cross-section plane
+        3. polyline - sorted cross section segments
+        4. profile - polylines transformed into corss section planes 0, 1
+        5. projection to axis - profiles projected to axes 0, 1
+        6. cut model - group of prjected profiles
+        7. gcode
     """
+    #
+    # print('read config file dxf2gcode.conf')
+    #
+    # config = configparser.ConfigParser()
+    # config.read('dxf2gcode.conf')
+    # config.sections()
+    #
+    # if 'layer_global' in config:
+    #     layer_global = config['layer_global']
+    #     # int(layer_global.get('feed'))
+    #     print(re.findall('\[.*([\d\.]+)[,\s]+([\d\.]+)[,\s]+([\d\.]+).*\]',layer_global.get('ref_coord')))
+    #     print(layer_global.get('ref_coord'))
+        # float(layer_global.get('power')
+        # float(layer_global.get('angle')
+        # float(print(layer_global.get('radius') )
+        # layer_global.get('cut_dir')
+        # int(layer_global.get('split'))
+
+        # for var in list(config.sections()):
+    #     print(var)
+
 
     fname_dxf = args.input
     lname_dxf = args.layer
@@ -103,9 +111,8 @@ def main(args):
                 s1.AddSeg(prof_name)
                 # s1.MakeSplit()
 
-            s1.Seg2Prof()
             s1.ApplyTransformations()
-            s1.MakeChain()
+            s1.Seg2Poly()
             # s1.PlotChain()
 
             ap.Add2Axis(i, s1)
