@@ -12,6 +12,7 @@ import re
 
 def main(args):
     """
+    (current developement)
     DXF model organisation:
         layers
         polyline
@@ -69,6 +70,11 @@ def main(args):
         6. cut model - group of prjected profiles
         7. gcode
     """
+
+
+    #TODO
+    #program sie wysypuje jezeli podana zla nazwa warstwy
+
     #
     # print('read config file dxf2gcode.conf')
     #
@@ -86,9 +92,8 @@ def main(args):
         # float(print(layer_global.get('radius') )
         # layer_global.get('cut_dir')
         # int(layer_global.get('split'))
-
         # for var in list(config.sections()):
-    #     print(var)
+        # print(var)
 
 
     fname_dxf = args.input
@@ -134,8 +139,8 @@ if __name__ == '__main__':
     #*********************************************************************PROGRAM
 
     parser = argparse.ArgumentParser(description='test')
-    parser.add_argument('-i', '--input', type=str, help='input filenames')
-    parser.add_argument('-l', '--layer', type=str, help='input layers')
+    parser.add_argument('-i', '--input', type=str, help='input filenames', required = True)
+    parser.add_argument('-l', '--layer', type=str, help='input layers', required = True)
     parser.add_argument('-a', '--accuracy', type=int,
                         default=dflt_dec_acc, help='decimal accuracy, default: 3')
     parser.add_argument('-narc', '--arc_seg_num', type=int,
@@ -156,5 +161,6 @@ if __name__ == '__main__':
     parser.add_argument('-plt', '--plot_paths', action='store_true', help='plot cutting paths')
 
     args = parser.parse_args()
+    # print(args)
 
     main(args)
