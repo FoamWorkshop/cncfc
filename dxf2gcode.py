@@ -7,7 +7,7 @@ import configparser
 import sys
 import cncfclib
 import gcodelib
-from cncfc_obj import chain, AxisProfile, ModelProfile, CuttingSpace
+from cncfc_obj import chain, AxisProfile, ModelProfile, CuttingSpace, layers2seq
 import re
 
 def main(args):
@@ -21,6 +21,7 @@ def main(args):
         cutting sections
 
     machine oconfiguration:
+
         *------------>XY
         |    |
         |    | d
@@ -31,30 +32,38 @@ def main(args):
         |
         *------------>UV
 
+        XY - axis 0
+        UV - axis 1
         O - rotary table axis, CCW dir, 0 towards UV axis
         d - rotary table distance from XY
         s - distance  between XY and UV columns
 
-    default configuration:
-        {'s': 480, 'd': 240, 'max_feed'}
+    the default machine configuration is as follows:
+        s=480
+        d=240
+        max_feed=200
 
-    layer naming convention:
+    Since the cutting model is organized by layer names it is important to follow layer naming convention:
         A#XX#Y#ZZ~comment
         A - layername
         XX- sequence_number
         Y - column number 0 - XY, 1-UV
         ZZ- section number
-        ~comment
+        ~comment - optional parameter with description
 
-    layer options specified int the textbox:
-        local (layer level):
-            feed - feed rate (NOT SCALED)
-            power - power on the wire
-            angle - rotary table rotation
-            radius - layer distance from the RT axis
-            coord_0 - reference coordinate sys, represents RT axis
-            split - split ploly line to number of sections
-       TODO cut_dir - cutting dir for closed polygons
+    each layer can have separate LAYER options can be changed by adding MTEXT field to the layer with an appropriate assignment:
+        option_name_1 = value
+        option_name_2 = value
+        option_name_n = value
+
+    where avaliable LAYER options are:
+            feed[float <0, 100>] - feed rate (NOT SCALED)
+            power[float <0, 100>] - power on the wire
+            angle[float] - rotary table rotation
+            radius[float] - layer distance from the RT axis
+            coord_0[float, float, float] - reference coordinate sys, represents RT axis
+            split[int] - split ploly line to number of sections
+            cut_dir['cw'|'ccw'] - cutting dir for closed polygons
 
         global (profile level):
             start - indicates the starting point of the cut
@@ -65,69 +74,53 @@ def main(args):
             *move to local CSYS
             *move to coresponding cross-section plane
         3. polyline - sorted cross section segments
-        4. profile - polylines transformed into corss section planes 0, 1
-        5. projection to axis - profiles projected to axes 0, 1
-        6. cut model - group of prjected profiles
-        7. gcode
+        4. profile - polylines transformed into corss section planes p0, p1
+        5. projection to axis - profiles projected to axes a0, a1
+        6. cut model - group of prjected profiles, organize according to layer naming scheme
+        7. generate gcode
     """
-
-
-    #TODO
-    #program sie wysypuje jezeli podana zla nazwa warstwy
-
-    #
-    # print('read config file dxf2gcode.conf')
-    #
-    # config = configparser.ConfigParser()
-    # config.read('dxf2gcode.conf')
-    # config.sections()
-    #
-    # if 'layer_global' in config:
-    #     layer_global = config['layer_global']
-    #     # int(layer_global.get('feed'))
-    #     print(re.findall('\[.*([\d\.]+)[,\s]+([\d\.]+)[,\s]+([\d\.]+).*\]',layer_global.get('ref_coord')))
-    #     print(layer_global.get('ref_coord'))
-        # float(layer_global.get('power')
-        # float(layer_global.get('angle')
-        # float(print(layer_global.get('radius') )
-        # layer_global.get('cut_dir')
-        # int(layer_global.get('split'))
-        # for var in list(config.sections()):
-        # print(var)
-
+    conf = {'Z_span': 480, 'RTable_loc': 240}
 
     fname_dxf = args.input
     lname_dxf = args.layer
+#find layers with the pattern and sort according to the convention
+    seq_list, seq_dict = layers2seq(fname_dxf, lname_dxf)
 
-    seq_list, seq_dict = cncfclib.layers2seq(fname_dxf, lname_dxf)
+    if seq_list and seq_dict:
+    #CuttingSpace is a single cutting sequence
+        ct = CuttingSpace(conf)
+    #ModelSpace is a group of cut sequences to obtain the model
+        md = ModelProfile()
 
-    conf = {'Z_span': 480, 'RTable_loc': 240}
+        for j,  seq_name in enumerate(seq_list):
+    #AxisProfile is an axis cutting sequence
+            ap = AxisProfile()
 
-    ct = CuttingSpace(conf)
-    md = ModelProfile()
+            for i, axis_name in enumerate(seq_name):
+    #create chain object
+                s1 = chain(fname_dxf)
 
-    for j,  seq_name in enumerate(seq_list):
-        ap = AxisProfile()
+                for prof_name in axis_name:
+    #add segments to chain. In general segments can be split between diferent layers
+                    s1.AddSeg(prof_name)
+                    # s1.MakeSplit()
+    #apply transformations to segments like translation and rotation
+                s1.ApplyTransformations()
+    #sort segments to obtain a polyline
+                s1.Seg2Poly()
+                # s1.PlotChain()
+    #add polylines to axis
+                ap.Add2Axis(i, s1)
+                # ap.Plot(mode='2D')
+    #add axis to the model space
+            md.Add2Prof(j, ap)
 
-        for i, axis_name in enumerate(seq_name):
-            s1 = chain(fname_dxf)
+        # md.Plot(mode = '3D')
+        ct.Add2Cut(md)
+        # ct.Plot(mode='3D')
+        ct.SaveGcode('test.ngc')
 
-            for prof_name in axis_name:
-                s1.AddSeg(prof_name)
-                # s1.MakeSplit()
 
-            s1.ApplyTransformations()
-            s1.Seg2Poly()
-            # s1.PlotChain()
-
-            ap.Add2Axis(i, s1)
-            # ap.Plot(mode='2D')
-        md.Add2Prof(j, ap)
-
-    # md.Plot(mode = '3D')
-    ct.Add2Cut(md)
-    # ct.Plot(mode='3D')
-    ct.SaveGcode('test.ngc')
 
 if __name__ == '__main__':
     #*********************************************************************DEFAULT PARAMETERS

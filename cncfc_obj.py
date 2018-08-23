@@ -5,8 +5,84 @@ import re
 from scipy import spatial
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import os
 
+def nested_dict():
+    return collections.defaultdict(nested_dict)
 
+def print_nested(val, buf, nesting = -1, prefix ='', bt=''):
+    if len(val):
+        nesting += 1
+        for i, k in enumerate(sorted(val)):
+            # print('val ',k)
+            text_path= k
+            if nesting==0:
+                bt=' '*(nesting-1)
+            else:
+                if i+1 == len(val):
+                    bt=prefix +'*--'
+                else:
+                    bt=prefix + '|--'
+            buf.append('{}{}{}'.format(bt, text_path, ''))
+            if len(val) > 1 and i != len(val) - 1:
+                tmp_prefix = prefix + '| '
+            else:
+                tmp_prefix = prefix + ' '
+            buf = print_nested(val[k], buf, nesting, tmp_prefix, bt)
+    else:
+        buf.append(val)
+    return buf
+
+def layers2seq(fname, req_layer):
+    '''layer naming convention:
+        A#XX#Y#ZZ~comment
+        A - layername
+        XX- sequence_number
+        Y - column number 0 - flat, 1-XY, 2-UV
+        ZZ- section number, might be empty
+        ~comment
+    '''
+
+    key = r'(^{})#(\d+)#([01_])#((\d+)?)(.*)'.format(req_layer)
+
+    layer_list = []
+    seq_list = []
+    seq_layer_dict = nested_dict()
+
+    if os.path.isfile(fname):
+        dwg = ezdxf.readfile(fname)
+
+        for layer in dwg.layers:
+            split_layer_name = re.findall(key, layer.dxf.name, re.IGNORECASE)
+            if split_layer_name:
+                seq_idx = split_layer_name[0][1]
+                col_idx = split_layer_name[0][2]
+                seq_layer_dict[seq_idx][col_idx][layer.dxf.name]=[]
+
+        if seq_layer_dict:
+            seq_layer_dict = collections.OrderedDict(sorted(seq_layer_dict.items(), key = lambda x: x[0]))
+
+            print('{:-^79}'.format('MODEL STRUCTURE'))
+            for var in print_nested(seq_layer_dict, []):
+                if var: print(var)
+
+            for seq_key in sorted(seq_layer_dict.keys()):
+                col_list = []
+                for plane_key in sorted(seq_layer_dict[seq_key].keys()):
+                    layer_list = []
+                    for layer in sorted(seq_layer_dict[seq_key][plane_key].keys()):
+                        layer_list.append(layer)
+                    col_list.append(layer_list)
+                seq_list.append(col_list)
+        else:
+            print('cannot find requested pattern: {}'.format(req_layer))
+            print('avaliable layers:')
+            for layer in dwg.layers:
+                print('     {}'.format(layer.dxf.name))
+    else:
+        print('cannot find file: {}'.format(fname))
+
+    return seq_list, seq_layer_dict
 
 class chain():
 
